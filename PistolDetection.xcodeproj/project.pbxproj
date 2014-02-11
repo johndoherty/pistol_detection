@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		5251D90118A9EF45000807D2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5251D90018A9EF45000807D2 /* main.cpp */; };
 		5251D90318A9EF45000807D2 /* PistolDetection.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5251D90218A9EF45000807D2 /* PistolDetection.1 */; };
+		5251D90A18A9F106000807D2 /* libopencv_core.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90918A9F106000807D2 /* libopencv_core.2.4.8.dylib */; };
+		5251D90C18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90B18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib */; };
+		5251D91018A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90F18A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,6 +31,10 @@
 		5251D8FD18A9EF45000807D2 /* PistolDetection */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PistolDetection; sourceTree = BUILT_PRODUCTS_DIR; };
 		5251D90018A9EF45000807D2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		5251D90218A9EF45000807D2 /* PistolDetection.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = PistolDetection.1; sourceTree = "<group>"; };
+		5251D90918A9F106000807D2 /* libopencv_core.2.4.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_core.2.4.8.dylib; path = ../../../../../../../opt/local/lib/libopencv_core.2.4.8.dylib; sourceTree = "<group>"; };
+		5251D90B18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_highgui.2.4.8.dylib; path = ../../../../../../../opt/local/lib/libopencv_highgui.2.4.8.dylib; sourceTree = "<group>"; };
+		5251D90E18A9F554000807D2 /* X077_03.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = X077_03.jpg; sourceTree = "<group>"; };
+		5251D90F18A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_imgproc.2.4.8.dylib; path = ../../../../../../../opt/local/lib/libopencv_imgproc.2.4.8.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -35,6 +42,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5251D91018A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib in Frameworks */,
+				5251D90C18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib in Frameworks */,
+				5251D90A18A9F106000807D2 /* libopencv_core.2.4.8.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,6 +54,9 @@
 		5251D8F418A9EF45000807D2 = {
 			isa = PBXGroup;
 			children = (
+				5251D90F18A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib */,
+				5251D90B18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib */,
+				5251D90918A9F106000807D2 /* libopencv_core.2.4.8.dylib */,
 				5251D8FF18A9EF45000807D2 /* PistolDetection */,
 				5251D8FE18A9EF45000807D2 /* Products */,
 			);
@@ -60,10 +73,19 @@
 		5251D8FF18A9EF45000807D2 /* PistolDetection */ = {
 			isa = PBXGroup;
 			children = (
+				5251D90D18A9F51E000807D2 /* Images */,
 				5251D90018A9EF45000807D2 /* main.cpp */,
 				5251D90218A9EF45000807D2 /* PistolDetection.1 */,
 			);
 			path = PistolDetection;
+			sourceTree = "<group>";
+		};
+		5251D90D18A9F51E000807D2 /* Images */ = {
+			isa = PBXGroup;
+			children = (
+				5251D90E18A9F554000807D2 /* X077_03.jpg */,
+			);
+			name = Images;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -195,14 +217,24 @@
 		5251D90718A9EF45000807D2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				"USER_HEADER_SEARCH_PATHS[arch=*]" = /opt/local/include;
 			};
 			name = Debug;
 		};
 		5251D90818A9EF45000807D2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				"USER_HEADER_SEARCH_PATHS[arch=*]" = /opt/local/include;
 			};
 			name = Release;
 		};

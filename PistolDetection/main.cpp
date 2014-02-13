@@ -102,21 +102,30 @@ int main( int argc, char** argv )
         help();
         return 0;
     }
-    Mat img = imread(argc == 3 ? argv[1] : "logo_in_clutter.png", 0);
-    Mat cimg;
-    cvtColor(img, cimg, CV_GRAY2BGR);
-    Mat tpl = imread(argc == 3 ? argv[2] : "logo.png", 0);
-    
+/*
+    Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo_in_clutter.png", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo.png", CV_LOAD_IMAGE_GRAYSCALE);
+    */
+    Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+
     // if the image and the template are not edge maps but normal grayscale images,
     // you might want to uncomment the lines below to produce the maps. You can also
     // run Sobel instead of Canny.
     
     Canny(img, img, 5, 50, 3);
     Canny(tpl, tpl, 5, 50, 3);
-    
+/*
+    char* window_name = "Edge Map";
+    namedWindow( window_name, CV_WINDOW_AUTOSIZE );
+    imshow(window_name, tpl);
+ */
+
+
     vector<vector<Point> > results;
     vector<float> costs;
     int best = chamerMatching( img, tpl, results, costs );
+/*
     if( best < 0 )
     {
         cout << "not found;\n";
@@ -131,6 +140,7 @@ int main( int argc, char** argv )
             cimg.at<Vec3b>(pt) = Vec3b(0, 255, 0);
     }
     imshow("result", cimg);
+*/
     waitKey();
     return 0;
 }

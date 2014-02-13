@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5232396E18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5232396D18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib */; };
 		5251D90118A9EF45000807D2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5251D90018A9EF45000807D2 /* main.cpp */; };
 		5251D90318A9EF45000807D2 /* PistolDetection.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5251D90218A9EF45000807D2 /* PistolDetection.1 */; };
 		5251D90A18A9F106000807D2 /* libopencv_core.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90918A9F106000807D2 /* libopencv_core.2.4.8.dylib */; };
@@ -28,6 +29,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5232396D18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_contrib.2.4.8.dylib; path = ../../../../../../../opt/local/lib/libopencv_contrib.2.4.8.dylib; sourceTree = "<group>"; };
 		5251D8FD18A9EF45000807D2 /* PistolDetection */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PistolDetection; sourceTree = BUILT_PRODUCTS_DIR; };
 		5251D90018A9EF45000807D2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		5251D90218A9EF45000807D2 /* PistolDetection.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = PistolDetection.1; sourceTree = "<group>"; };
@@ -42,6 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5232396E18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib in Frameworks */,
 				5251D91018A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib in Frameworks */,
 				5251D90C18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib in Frameworks */,
 				5251D90A18A9F106000807D2 /* libopencv_core.2.4.8.dylib in Frameworks */,
@@ -54,6 +57,7 @@
 		5251D8F418A9EF45000807D2 = {
 			isa = PBXGroup;
 			children = (
+				5232396D18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib */,
 				5251D90F18A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib */,
 				5251D90B18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib */,
 				5251D90918A9F106000807D2 /* libopencv_core.2.4.8.dylib */,
@@ -257,6 +261,7 @@
 				5251D90818A9EF45000807D2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

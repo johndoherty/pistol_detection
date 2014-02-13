@@ -48,7 +48,7 @@ void CannyThreshold(int, void*)
 int main( int argc, char** argv )
 {
     /// Load an image
-    src = imread("/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg");
+    src = imread("/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/X077_03.jpg");
     
     if( !src.data )
     { return -1; }
@@ -74,6 +74,7 @@ int main( int argc, char** argv )
     return 0;
 }
 */
+
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/contrib/contrib.hpp"
@@ -102,10 +103,10 @@ int main( int argc, char** argv )
         help();
         return 0;
     }
-    Mat img = imread(argc == 3 ? argv[1] : "logo_in_clutter.png", 0);
+    Mat img = imread(argc == 3 ? argv[1] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/logo_in_clutter.png", 0);
     Mat cimg;
     cvtColor(img, cimg, CV_GRAY2BGR);
-    Mat tpl = imread(argc == 3 ? argv[2] : "logo.png", 0);
+    Mat tpl = imread(argc == 3 ? argv[2] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/logo.png", 0);
     
     // if the image and the template are not edge maps but normal grayscale images,
     // you might want to uncomment the lines below to produce the maps. You can also
@@ -113,6 +114,10 @@ int main( int argc, char** argv )
     
     Canny(img, img, 5, 50, 3);
     Canny(tpl, tpl, 5, 50, 3);
+    
+    imshow( "img", img );
+    imshow( "template", tpl );
+    waitKey(0);
     
     vector<vector<Point> > results;
     vector<float> costs;
@@ -134,3 +139,4 @@ int main( int argc, char** argv )
     waitKey();
     return 0;
 }
+

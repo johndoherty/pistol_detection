@@ -79,6 +79,7 @@ int main( int argc, char** argv )
 #include "opencv2/contrib/contrib.hpp"
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <iostream>
 
@@ -95,6 +96,7 @@ void help()
     "By default\n"
     "the inputs are ./chamfermatching logo_in_clutter.png logo.png\n"<< endl;
 }
+
 int main( int argc, char** argv )
 {
     if( argc != 1 && argc != 3 )
@@ -102,29 +104,33 @@ int main( int argc, char** argv )
         help();
         return 0;
     }
-/*
-    Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo_in_clutter.png", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo.png", CV_LOAD_IMAGE_GRAYSCALE);
-    */
-    Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+
+    //Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo_in_clutter.png", CV_LOAD_IMAGE_GRAYSCALE);
+    //Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo.png", CV_LOAD_IMAGE_GRAYSCALE);
+
+    Mat img = imread(argc == 3 ? argv[1] : "./X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat tpl = imread(argc == 3 ? argv[2] : "./X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
     // if the image and the template are not edge maps but normal grayscale images,
     // you might want to uncomment the lines below to produce the maps. You can also
     // run Sobel instead of Canny.
     
-    Canny(img, img, 5, 50, 3);
-    Canny(tpl, tpl, 5, 50, 3);
+
+    Canny(img, img, 150, 200, 3);
+    Canny(tpl, tpl, 150, 200, 3);
+
 /*
-    char* window_name = "Edge Map";
-    namedWindow( window_name, CV_WINDOW_AUTOSIZE );
-    imshow(window_name, tpl);
- */
+ char* window_name = "Edge Map";
+ namedWindow( window_name, CV_WINDOW_AUTOSIZE );
+ imshow(window_name, img);
+*/
+    char * dir = getcwd(NULL, 0);
+    cout << "Current dir: " << dir << endl;
 
 
     vector<vector<Point> > results;
     vector<float> costs;
-    int best = chamerMatching( img, tpl, results, costs );
+    //int best = chamerMatching(img, tpl, results, costs );
 /*
     if( best < 0 )
     {

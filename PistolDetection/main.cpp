@@ -136,7 +136,7 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
 int main( int argc, char** argv ) {
     
     if( argc != 1 && argc != 3 ) {
-        help();
+        //help();
         return 0;
     }
     

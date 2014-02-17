@@ -1355,10 +1355,11 @@ namespace cv
 
     
     int chamerMatching( Mat& img, Mat& templ,
-                       std::vector<std::vector<Point> >& results, std::vector<float>& costs,
-                       double templScale, int maxMatches, double minMatchDistance, int padX,
-                       int padY, int scales, double minScale, double maxScale,
-                       double orientationWeight, double truncate )
+                       CV_OUT vector<vector<Point> >& results, CV_OUT vector<float>& cost,
+                       double templScale=1, int maxMatches = 20,
+                       double minMatchDistance = 1.0, int padX = 3,
+                       int padY = 3, int scales = 5, double minScale = 0.6, double maxScale = 1.6,
+                       double orientationWeight = 0.5, double truncate = 20)
     {
         CV_Assert(img.type() == CV_8UC1 && templ.type() == CV_8UC1);
         
@@ -1372,7 +1373,7 @@ namespace cv
         size_t i, nmatches = match_instances.size();
         
         results.resize(nmatches);
-        costs.resize(nmatches);
+        cost.resize(nmatches);
         
         int bestIdx = -1;
         double minCost = DBL_MAX;
@@ -1386,7 +1387,7 @@ namespace cv
                 minCost = cval;
                 bestIdx = (int)i;
             }
-            costs[i] = (float)cval;
+            cost[i] = (float)cval;
             
             const template_coords_t& templ_coords = match.tpl->coords;
             std::vector<Point>& templPoints = results[i];
@@ -1405,5 +1406,3 @@ namespace cv
     }
     
 }
-
-

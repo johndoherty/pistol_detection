@@ -5,7 +5,6 @@
 //  Created by John Doherty on 2/10/14.
 //  Copyright (c) 2014 John Doherty, Aaron Damashek. All rights reserved.
 //
-//#include "chamfer.h"
 
 #include "opencv2/contrib/contrib.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -15,18 +14,123 @@
 #include <unistd.h>
 #include <iostream>
 
-using namespace cv;
 using namespace std;
+using namespace cv;
 
-void help()
-{
-	cout <<
-    "\nThis program demonstrates chamfer matching -- computing a distance between an \n"
-    "edge template and a query edge image.\n"
-    "Call:\n"
-    "./chamfermatching [<image edge map> <template edge map>]\n"
-    "By default\n"
-    "the inputs are ./chamfermatching logo_in_clutter.png logo.png\n"<< endl;
+
+vector<vector<int>> truth;
+int numPolygons = 10;
+double matchThreshold = .15;
+
+void populateTruth(){
+    vector<int> firstFolder;
+    for(int i = 0; i < 14; i++){
+        firstFolder.push_back(0);
+    }
+    truth.push_back(firstFolder);
+}
+
+bool basicChamfer(Mat img, Mat tpl){
+    Canny(img, img, 100, 300, 3);
+    Canny(tpl, tpl, 100, 300, 3);
+    
+    
+    vector<vector<Point> > results;
+    vector<float> costs;
+    
+    int best = chamerMatching(img, tpl, results, costs);
+    if( best < 0 || costs[best] < matchThreshold) {
+        //cout << "not found;\n";
+        return false;
+    }
+    return true;
+}
+
+/*To be implemented*/
+vector<Mat> splitIntoImages(Mat img){
+    vector<Mat> subImages;
+    return subImages;
+}
+
+bool votingChamfer(Mat img, Mat tpl){
+	vector<Mat> subPolygons = splitIntoImages(img);
+	int detected = 0;
+	for(int i = 0; i < numPolygons; i++){
+		if(basicChamfer(subPolygons[i], tpl)) detected += 1;
+	}
+	if(detected > numPolygons/2) return true;
+	return false;
+}
+
+void setUpMLChamfer(Mat tpl, vector<Mat> trainingImages){
+	vector<vector<bool>> trainingSamples;
+    vector<bool> found;
+	for(int j = 0; j < trainingImages.size(); j++){
+        vector<Mat> subPolygons = splitIntoImages(trainingImages[j]);
+        for(int i = 0; i < numPolygons; i++){
+            if(basicChamfer(subPolygons[i], tpl)) found.push_back(true);
+            else found.push_back(false);
+        }
+        trainingSamples.push_back(found);
+	}
+	//machine.train(trainingSamples);
+	//return Machine;
+}
+
+bool MLChamfer(Mat img, Mat tpl){
+//bool MLChamfer(Mat img, Mat tpl, machine){
+	vector<Mat> subPolygons = splitIntoImages(img);
+	//if(!machine.trained) return;
+	vector<bool> found;
+	for(int i = 0; i < numPolygons; i++){
+		if(basicChamfer(subPolygons[i], tpl)) found.push_back(true);
+		else found.push_back(false);
+	}
+	//return machine(found);
+    return false;
+}
+
+void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
+    int falsePositives = 0;
+    int falseNegatives = 0;
+    int correctIdentification = 0;
+    int correctDiscard = 0;
+    for(int i = 1; i <= 1; i++){//Denoting the folder
+        int imgNum = 1;
+        while(true){
+            string folder = to_string(i);
+            string pic = to_string(imgNum);
+            if(i < 10) folder = "0" + folder;
+            if(imgNum < 10) pic = "0" + pic;
+            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+            Mat cimg;
+            cvtColor(img, cimg, CV_GRAY2BGR);
+            if(!img.data) break;
+            bool gunFound = chamferFunction(img, tpl); //Basic, votingChamfer or MLChamfer
+            if(gunFound){
+                if(truth[i-1][imgNum-1]){
+                correctIdentification+=1;
+                }else{
+                    falsePositives+=1;
+                }
+            }
+            if(!gunFound){
+                if(!truth[i-1][imgNum-1]){
+                correctDiscard+=1;
+                }else{
+                    falseNegatives+=1;
+                }
+            }
+            imgNum++;
+        }
+    }
+    int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
+    cout << "False positives: " << falsePositives << endl;
+    cout << "False Negatives: " << falseNegatives << endl;
+    cout << "Correct identifications: " << correctIdentification << endl;
+    cout << "Correct Discards: " << correctDiscard << endl;
+    cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }
 
 int main( int argc, char** argv ) {
@@ -118,3 +222,4 @@ int main( int argc, char** argv ) {
     waitKey();
     return 0;
 }
+

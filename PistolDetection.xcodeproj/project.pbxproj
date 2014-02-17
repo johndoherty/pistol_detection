@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		09D0095218B1D9D400572F11 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5251D90018A9EF45000807D2 /* main.cpp */; };
 		5232396E18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5232396D18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib */; };
 		5232397118AD9BCB00C428B7 /* chamfer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5232396F18AD9BCB00C428B7 /* chamfer.cpp */; };
 		52383C3618B1D9B600615961 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5251D90018A9EF45000807D2 /* main.cpp */; };

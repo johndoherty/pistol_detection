@@ -10,14 +10,11 @@
 #define PistolDetection_chamfer_h
 
 #include "opencv2/imgproc/imgproc.hpp"
-
 using namespace cv;
 
 int chamerMatching( Mat& img, Mat& templ,
-                   CV_OUT vector<vector<Point> >& results, CV_OUT vector<float>& cost,
-                   double templScale=1, int maxMatches = 20,
-                   double minMatchDistance = 1.0, int padX = 3,
-                   int padY = 3, int scales = 5, double minScale = 0.6, double maxScale = 1.6,
-                   double orientationWeight = 0.5, double truncate = 20);
-
+                   std::vector<std::vector<Point> >& results, std::vector<float>& costs,
+                   double templScale, int maxMatches, double minMatchDistance, int padX,
+                   int padY, int scales, double minScale, double maxScale,
+                   double orientationWeight, double truncate );
 #endif

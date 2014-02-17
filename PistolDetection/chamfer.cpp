@@ -1355,10 +1355,11 @@ namespace cv
 
     
     int chamerMatching( Mat& img, Mat& templ,
-                       std::vector<std::vector<Point> >& results, std::vector<float>& costs,
-                       double templScale, int maxMatches, double minMatchDistance, int padX,
-                       int padY, int scales, double minScale, double maxScale,
-                       double orientationWeight, double truncate )
+                       CV_OUT vector<vector<Point> >& results, CV_OUT vector<float>& cost,
+                       double templScale=1, int maxMatches = 20,
+                       double minMatchDistance = 1.0, int padX = 3,
+                       int padY = 3, int scales = 5, double minScale = 0.6, double maxScale = 1.6,
+                       double orientationWeight = 0.5, double truncate = 20)
     {
         CV_Assert(img.type() == CV_8UC1 && templ.type() == CV_8UC1);
         
@@ -1372,7 +1373,7 @@ namespace cv
         size_t i, nmatches = match_instances.size();
         
         results.resize(nmatches);
-        costs.resize(nmatches);
+        cost.resize(nmatches);
         
         int bestIdx = -1;
         double minCost = DBL_MAX;
@@ -1386,7 +1387,7 @@ namespace cv
                 minCost = cval;
                 bestIdx = (int)i;
             }
-            costs[i] = (float)cval;
+            cost[i] = (float)cval;
             
             const template_coords_t& templ_coords = match.tpl->coords;
             std::vector<Point>& templPoints = results[i];
@@ -1404,80 +1405,9 @@ namespace cv
         return bestIdx;
     }
     
-    int chamerMatching( Mat& img, Mat& templ,
-                       CV_OUT vector<vector<Point> >& results, CV_OUT vector<float>& cost,
-                       double templScale=1, int maxMatches = 20,
-                       double minMatchDistance = 1.0, int padX = 3,
-                       int padY = 3, int scales = 5, double minScale = 0.6, double maxScale = 1.6,
-                       double orientationWeight = 0.5, double truncate = 20);
+
     
 }
 
-using namespace cv;
-using namespace std;
 
-int main( int argc, char** argv ) {
 
-    if( argc != 1 && argc != 3 ) {
-        //help();
-        return 0;
-    }
-    
-    /*
-     Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo_in_clutter.png", CV_LOAD_IMAGE_GRAYSCALE);
-     Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo.png", CV_LOAD_IMAGE_GRAYSCALE);
-     */
-    /*
-     Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-     Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);*/
-    
-    Mat img = imread(argc == 3 ? argv[1] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/logo_in_clutter.png", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat cimg;
-    cvtColor(img, cimg, CV_GRAY2BGR);
-    Mat tpl = imread(argc == 3 ? argv[2] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/logo.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
-    
-    // if the image and the template are not edge maps but normal grayscale images,
-    // you might want to uncomment the lines below to produce the maps. You can also
-    // run Sobel instead of Canny.
-    
-    Canny(img, img, 100, 300, 3);
-    Canny(tpl, tpl, 100, 300, 3);
-    
-    imshow( "img", img );
-    imshow( "template", tpl );
-    waitKey(0);
-    destroyAllWindows();
-    
-    imshow( "img", img );
-    waitKey(0);
-    destroyAllWindows();
-    
-    /*
-     char* window_name = "Edge Map";
-     namedWindow( window_name, CV_WINDOW_AUTOSIZE );
-     imshow(window_name, tpl);
-     */
-    
-    
-    vector<vector<Point> > results;
-    vector<float> costs;
-    
-    int best = chamerMatching(img, tpl, results, costs);
-    if( best < 0 ) {
-        cout << "not found;\n";
-        return 0;
-    }
-    size_t j,m = results.size();
-    for(j = 0; j < m; j++) {
-        //size_t i, n = results[best].size();
-        size_t i, n = results[j].size();
-        for( i = 0; i < n; i++ ) {
-            Point pt = results[best][i];
-            if( pt.inside(Rect(0, 0, cimg.cols, cimg.rows)) )
-                cimg.at<Vec3b>(pt) = Vec3b(0, 255, 0);
-        }
-    }
-    imshow("result", cimg);
-    waitKey();
-    return 0;
-}

@@ -40,13 +40,13 @@ bool basicChamfer(Mat img, Mat tpl){
 }
 
 /*To be implemented*/
-Vector<Mat> splitIntoImages(Mat img){
-    Vector<Mat> subImages;
+vector<Mat> splitIntoImages(Mat img){
+    vector<Mat> subImages;
     return subImages;
 }
 
 bool votingChamfer(Mat img, Mat tpl){
-	Vector<Mat> subPolygons = splitIntoImages(img);
+	vector<Mat> subPolygons = splitIntoImages(img);
 	int detected = 0;
 	for(int i = 0; i < numPolygons; i++){
 		if(basicChamfer(subPolygons[i], tpl)) detected += 1;
@@ -55,11 +55,11 @@ bool votingChamfer(Mat img, Mat tpl){
 	return false;
 }
 
-void setUpMLChamfer(Mat tpl, Vector<Mat> trainingImages){
-	Vector<Vector<bool>> trainingSamples;
+void setUpMLChamfer(Mat tpl, vector<Mat> trainingImages){
+	vector<vector<bool>> trainingSamples;
     vector<bool> found;
 	for(int j = 0; j < trainingImages.size(); j++){
-        Vector<Mat> subPolygons = splitIntoImages(trainingImages[j]);
+        vector<Mat> subPolygons = splitIntoImages(trainingImages[j]);
         for(int i = 0; i < numPolygons; i++){
             if(basicChamfer(subPolygons[i], tpl)) found.push_back(true);
             else found.push_back(false);
@@ -72,7 +72,7 @@ void setUpMLChamfer(Mat tpl, Vector<Mat> trainingImages){
 
 bool MLChamfer(Mat img, Mat tpl){
 //bool MLChamfer(Mat img, Mat tpl, machine){
-	Vector<Mat> subPolygons = splitIntoImages(img);
+	vector<Mat> subPolygons = splitIntoImages(img);
 	//if(!machine.trained) return;
 	vector<bool> found;
 	for(int i = 0; i < numPolygons; i++){

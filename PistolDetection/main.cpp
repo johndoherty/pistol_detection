@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace cv;
@@ -23,11 +24,17 @@ int numPolygons = 10;
 double matchThreshold = .15;
 
 void populateTruth(){
-    vector<int> firstFolder;
-    for(int i = 0; i < 14; i++){
-        firstFolder.push_back(0);
+    //Auto-file read in
+    ifstream input( "./truth.txt" );
+    std::string line;
+    while (std::getline(input, line)){
+        vector<int> currFolder;
+        for(int num = 0; num < line.length(); num++){
+            int currNum = atoi(&line[num]);
+            currFolder.push_back(currNum);
+        }
+        truth.push_back(currFolder);
     }
-    truth.push_back(firstFolder);
 }
 
 bool basicChamfer(Mat img, Mat tpl){
@@ -95,7 +102,7 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
     int falseNegatives = 0;
     int correctIdentification = 0;
     int correctDiscard = 0;
-    for(int i = 1; i <= 1; i++){//Denoting the folder
+    for(int i = 1; i <= 1; i++){//Should be set to 120 for the full dataset
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
@@ -126,9 +133,9 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
         }
     }
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
-    cout << "False positives: " << falsePositives << endl;
+    cout << "False Positives: " << falsePositives << endl;
     cout << "False Negatives: " << falseNegatives << endl;
-    cout << "Correct identifications: " << correctIdentification << endl;
+    cout << "Correct Identifications: " << correctIdentification << endl;
     cout << "Correct Discards: " << correctDiscard << endl;
     cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }

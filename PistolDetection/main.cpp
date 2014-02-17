@@ -23,6 +23,14 @@ vector<vector<int>> truth;
 int numPolygons = 10;
 double matchThreshold = .15;
 
+void populateTruth(){
+    vector<int> firstFolder;
+    for(int i = 0; i < 14; i++){
+        firstFolder.push_back(0);
+    }
+    truth.push_back(firstFolder);
+}
+
 bool basicChamfer(Mat img, Mat tpl){
     Canny(img, img, 100, 300, 3);
     Canny(tpl, tpl, 100, 300, 3);
@@ -33,7 +41,7 @@ bool basicChamfer(Mat img, Mat tpl){
     
     int best = chamerMatching(img, tpl, results, costs);
     if( best < 0 || costs[best] < matchThreshold) {
-        cout << "not found;\n";
+        //cout << "not found;\n";
         return false;
     }
     return true;
@@ -88,28 +96,34 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
     int falseNegatives = 0;
     int correctIdentification = 0;
     int correctDiscard = 0;
-    for(int i = 1; i <= 120; i++){//Denoting the imageNumber
+    for(int i = 1; i <= 1; i++){//Denoting the folder
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
             string pic = to_string(imgNum);
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
-            Mat img = imread("../X0" + folder + "_" + pic + ".jpg", CV_LOAD_IMAGE_GRAYSCALE);
+            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
             cvtColor(img, cimg, CV_GRAY2BGR);
-            if(img.data) break;
+            if(!img.data) break;
             bool gunFound = chamferFunction(img, tpl); //Basic, votingChamfer or MLChamfer
-            if(gunFound && truth[i][imgNum-1]){
+            if(gunFound){
+                if(truth[i-1][imgNum-1]){
                 correctIdentification+=1;
-            }else{
-                falsePositives+=1;
+                }else{
+                    falsePositives+=1;
+                }
             }
-            if(!gunFound && !truth[i][imgNum-1]){
+            if(!gunFound){
+                if(!truth[i-1][imgNum-1]){
                 correctDiscard+=1;
-            }else{
-                falseNegatives+=1;
+                }else{
+                    falseNegatives+=1;
+                }
             }
+            imgNum++;
         }
     }
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
@@ -117,7 +131,7 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
     cout << "False Negatives: " << falseNegatives << endl;
     cout << "Correct identifications: " << correctIdentification << endl;
     cout << "Correct Discards: " << correctDiscard << endl;
-    cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100;
+    cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }
 
 int main( int argc, char** argv ) {
@@ -155,6 +169,8 @@ int main( int argc, char** argv ) {
     }
     imshow("result", cimg);
     waitKey();
+    populateTruth();
+    testFunction(basicChamfer, tpl);
     return 0;
 }
 

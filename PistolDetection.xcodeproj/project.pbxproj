@@ -9,21 +9,23 @@
 /* Begin PBXBuildFile section */
 		5232396E18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5232396D18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib */; };
 		5232397118AD9BCB00C428B7 /* chamfer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5232396F18AD9BCB00C428B7 /* chamfer.cpp */; };
-		5251D90318A9EF45000807D2 /* PistolDetection.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5251D90218A9EF45000807D2 /* PistolDetection.1 */; };
+		52383C3618B1D9B600615961 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5251D90018A9EF45000807D2 /* main.cpp */; };
+		5251D90318A9EF45000807D2 /* PistolDetection.1 in Copy Files */ = {isa = PBXBuildFile; fileRef = 5251D90218A9EF45000807D2 /* PistolDetection.1 */; };
 		5251D90A18A9F106000807D2 /* libopencv_core.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90918A9F106000807D2 /* libopencv_core.2.4.8.dylib */; };
 		5251D90C18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90B18A9F496000807D2 /* libopencv_highgui.2.4.8.dylib */; };
 		5251D91018A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5251D90F18A9F67F000807D2 /* libopencv_imgproc.2.4.8.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		5251D8FB18A9EF45000807D2 /* CopyFiles */ = {
+		5251D8FB18A9EF45000807D2 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
-				5251D90318A9EF45000807D2 /* PistolDetection.1 in CopyFiles */,
+				5251D90318A9EF45000807D2 /* PistolDetection.1 in Copy Files */,
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 1;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -31,7 +33,6 @@
 /* Begin PBXFileReference section */
 		5232396D18AD711F00C428B7 /* libopencv_contrib.2.4.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_contrib.2.4.8.dylib; path = ../../../../../../../opt/local/lib/libopencv_contrib.2.4.8.dylib; sourceTree = "<group>"; };
 		5232396F18AD9BCB00C428B7 /* chamfer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = chamfer.cpp; sourceTree = "<group>"; };
-		5232397618ADA6A800C428B7 /* chamfer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = chamfer.h; sourceTree = "<group>"; };
 		5251D8FD18A9EF45000807D2 /* PistolDetection */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PistolDetection; sourceTree = BUILT_PRODUCTS_DIR; };
 		5251D90018A9EF45000807D2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		5251D90218A9EF45000807D2 /* PistolDetection.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = PistolDetection.1; sourceTree = "<group>"; };
@@ -82,7 +83,6 @@
 				5251D90D18A9F51E000807D2 /* Images */,
 				5251D90018A9EF45000807D2 /* main.cpp */,
 				5232396F18AD9BCB00C428B7 /* chamfer.cpp */,
-				5232397618ADA6A800C428B7 /* chamfer.h */,
 				5251D90218A9EF45000807D2 /* PistolDetection.1 */,
 			);
 			path = PistolDetection;
@@ -105,7 +105,7 @@
 			buildPhases = (
 				5251D8F918A9EF45000807D2 /* Sources */,
 				5251D8FA18A9EF45000807D2 /* Frameworks */,
-				5251D8FB18A9EF45000807D2 /* CopyFiles */,
+				5251D8FB18A9EF45000807D2 /* Copy Files */,
 			);
 			buildRules = (
 			);
@@ -147,6 +147,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				52383C3618B1D9B600615961 /* main.cpp in Sources */,
 				5232397118AD9BCB00C428B7 /* chamfer.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -21,6 +21,7 @@ using namespace cv;
 
 vector<vector<int>> truth;
 int numPolygons = 10;
+double matchThreshold = .15;
 
 bool basicChamfer(Mat img, Mat tpl){
     Canny(img, img, 100, 300, 3);
@@ -31,7 +32,7 @@ bool basicChamfer(Mat img, Mat tpl){
     vector<float> costs;
     
     int best = chamerMatching(img, tpl, results, costs);
-    if( best < 0 ) {
+    if( best < 0 || costs[best] < matchThreshold) {
         cout << "not found;\n";
         return false;
     }

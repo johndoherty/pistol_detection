@@ -53,9 +53,19 @@ bool basicChamfer(Mat img, Mat tpl){
     return true;
 }
 
-/*To be implemented*/
-vector<Mat> splitIntoImages(Mat img){
+vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
     vector<Mat> subImages;
+    int rowSize = ceil((float)img.rows / rows);
+    int colSize = ceil((float)img.cols / cols);
+    cout << img.rows;
+    cout << img.cols;
+    
+    for (int r = 0; r < rows; r ++) {
+        for (int c = 0; c < cols; c ++) {
+            subImages.push_back(img(Range((r*rowSize), min(((r+1) * rowSize), img.rows)),
+                                    Range((c*colSize), min(((c+1) * colSize), img.cols))).clone());
+        }
+    }
     return subImages;
 }
 
@@ -167,6 +177,7 @@ int main( int argc, char** argv ) {
     
     Canny(img, img, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
+    vector<Mat>images = splitIntoImages(tpl);
 
     imshow( "img", img );
     imshow( "template", tpl );
@@ -227,6 +238,8 @@ int main( int argc, char** argv ) {
     imshow("result", cimg);
     imshow("edges", img);
     waitKey();
+    populateTruth();
+    testFunction(basicChamfer, tpl);
     return 0;
 }
 

@@ -11,25 +11,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "../dlib-18.6/dlib/svm.h"
 
 #include <iostream>
 #include <fstream>
 
 using namespace std;
 using namespace cv;
+using namespace dlib;
 
 //#include "chamfer.h"
 
-vector<vector<int>> truth;
-int numPolygons = 10;
+
+Vector<Vector<int>> truth;
+const int numPolygons = 10;
 double matchThreshold = .15;
+
+typedef matrix<double, numPolygons, 1> subImageResults;
+typedef radial_basis_kernel<subImageResults> kernel;
+typedef decision_function<kernel> dec_funct_type;
+typedef normalized_function<dec_funct_type> funct;
 
 void populateTruth(){
     //Auto-file read in
     ifstream input( "./truth.txt" );
     std::string line;
     while (std::getline(input, line)){
-        vector<int> currFolder;
+        Vector<int> currFolder;
         for(int num = 0; num < line.length(); num++){
             int currNum = atoi(&line[num]);
             currFolder.push_back(currNum);
@@ -43,8 +51,8 @@ bool basicChamfer(Mat img, Mat tpl){
     Canny(tpl, tpl, 100, 300, 3);
     
     
-    vector<vector<Point> > results;
-    vector<float> costs;
+    Vector<Vector<Point> > results;
+    Vector<float> costs;
     
     int best = chamerMatching(img, tpl, results, costs);
     if( best < 0 || costs[best] < matchThreshold) {
@@ -55,13 +63,13 @@ bool basicChamfer(Mat img, Mat tpl){
 }
 
 /*To be implemented*/
-vector<Mat> splitIntoImages(Mat img){
-    vector<Mat> subImages;
+Vector<Mat> splitIntoImages(Mat img){
+    Vector<Mat> subImages;
     return subImages;
 }
 
 bool votingChamfer(Mat img, Mat tpl){
-	vector<Mat> subPolygons = splitIntoImages(img);
+	Vector<Mat> subPolygons = splitIntoImages(img);
 	int detected = 0;
 	for(int i = 0; i < numPolygons; i++){
 		if(basicChamfer(subPolygons[i], tpl)) detected += 1;
@@ -70,32 +78,127 @@ bool votingChamfer(Mat img, Mat tpl){
 	return false;
 }
 
-void setUpMLChamfer(Mat tpl, vector<Mat> trainingImages){
-	vector<vector<bool>> trainingSamples;
-    vector<bool> found;
-	for(int j = 0; j < trainingImages.size(); j++){
-        vector<Mat> subPolygons = splitIntoImages(trainingImages[j]);
-        for(int i = 0; i < numPolygons; i++){
-            if(basicChamfer(subPolygons[i], tpl)) found.push_back(true);
-            else found.push_back(false);
+funct setUpMLChamfer(Mat tpl, Vector<Mat> trainingImages, Vector<int> imageTruths){
+	Vector<Vector<int>> trainingSamples;
+    Vector<int> found;
+    
+
+    std::vector<subImageResults> samples;
+    std::vector<double> labels;//Ground truth
+    
+    bool samplesTested = false;
+    if(!samplesTested){
+        ofstream results;
+        results.open ("./subImageResults");
+        
+        for(int j = 0; j < trainingImages.size(); j++){
+            Vector<Mat> subPolygons = splitIntoImages(trainingImages[j]);
+            for(int i = 0; i < numPolygons; i++){
+                if(basicChamfer(subPolygons[i], tpl)) found.push_back(1);//1 is found
+                else found.push_back(0);//0 is not found
+            }
+            trainingSamples.push_back(found);
+            
+            //Write samples to file
+            std::stringstream result;
+            std::copy(found.begin(), found.end(), std::ostream_iterator<int>(result));
+            results << result.str() << endl;
         }
-        trainingSamples.push_back(found);
-	}
-	//machine.train(trainingSamples);
-	//return Machine;
+        
+        results.close();
+    }else{
+        //read samples from file
+        ifstream input( "./subImageResults.txt" );
+        std::string line;
+        while (std::getline(input, line)){
+            Vector<int> currImage;
+            for(int num = 0; num < line.length(); num++){
+                int currNum = atoi(&line[num]);
+                currImage.push_back(currNum);
+            }
+            trainingSamples.push_back(currImage);
+        }
+    }
+    
+    for(int i = 0; i < trainingSamples.size(); i++){
+        subImageResults sample;
+        for(int j = 0; j < numPolygons; j++){
+            sample(j) = trainingSamples[i][j];
+            samples.push_back(sample);
+        }
+        labels.push_back(imageTruths[i]);
+    }
+    
+    //Normalize samples
+    vector_normalizer<subImageResults> normalizer;
+    normalizer.train(samples);
+    for (unsigned long i = 0; i < samples.size(); i++){
+        samples[i] = normalizer(samples[i]);
+    }
+    
+    randomize_samples(samples, labels);
+    // The nu parameter has a maximum value that is dependent on the ratio of the +1 to -1
+    // labels in the training data.  This function finds that value.
+    const double max_nu = maximum_nu(labels);
+    // here we make an instance of the svm_nu_trainer object that uses our kernel type.
+    //svm_c_ekm_trainer<kernel> trainer;
+    svm_nu_trainer<kernel> trainer;
+    cout << "doing cross validation" << endl;
+    for (double gamma = 0.00001; gamma <= 1; gamma *= 5)
+    {
+        for (double nu = 0.00001; nu < max_nu; nu *= 5)
+        {
+            // tell the trainer the parameters we want to use
+            trainer.set_kernel(kernel(gamma));
+            trainer.set_nu(nu);
+            
+            cout << "gamma: " << gamma << "    nu: " << nu << endl;
+            // Print out the cross validation accuracy for 3-fold cross validation using
+            // the current gamma and nu.  cross_validate_trainer() returns a row vector.
+            // The first element of the vector is the fraction of +1 training examples
+            // correctly classified and the second number is the fraction of -1 training
+            // examples correctly classified.
+            cout << "cross validation accuracy: " << cross_validate_trainer(trainer, samples, labels, 3) << endl;
+        }
+    }
+    
+    trainer.set_kernel(kernel(0.15625));
+    trainer.set_nu(0.15625);
+    
+    // Here we are making an instance of the normalized_function object.  This object
+    // provides a convenient way to store the vector normalization information along with
+    // the decision function we are going to learn.
+    funct learned_function;
+    learned_function.normalizer = normalizer;  // save normalization information
+    learned_function.function = trainer.train(samples, labels); // perform the actual SVM training and save the results
+    
+    // print out the number of support vectors in the resulting decision function
+    cout << "\nnumber of support vectors in our learned_function is "
+    << learned_function.function.basis_vectors.size() << endl;
+
+	return learned_function;
 }
 
-bool MLChamfer(Mat img, Mat tpl){
-//bool MLChamfer(Mat img, Mat tpl, machine){
-	vector<Mat> subPolygons = splitIntoImages(img);
-	//if(!machine.trained) return;
-	vector<bool> found;
+bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
+	Vector<Mat> subPolygons = splitIntoImages(img);
+    
+
+    //Find results for sub-images
+    subImageResults found;
 	for(int i = 0; i < numPolygons; i++){
-		if(basicChamfer(subPolygons[i], tpl)) found.push_back(true);
-		else found.push_back(false);
+		if(basicChamfer(subPolygons[i], tpl)) found(i) = 1;//1 is found
+		else found(i) = 0;
 	}
-	//return machine(found);
-    return false;
+    
+    //Do Machine Learning to determine if whole image matches
+    double output = decisionFunction(found);
+    
+    cout << "The classifier output is " << output << endl;
+    
+    //The decision function will return values
+    // >= 0 for samples it predicts are in the +1 class and numbers < 0 for samples it
+    // predicts to be in the -1 class.
+	return (output >= 0);
 }
 
 void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
@@ -156,8 +259,8 @@ int main( int argc, char** argv ) {
     Canny(tpl, tpl, 100, 300, 3);
     
     
-    vector<vector<Point> > results;
-    vector<float> costs;
+    Vector<Vector<Point> > results;
+    Vector<float> costs;
     
     int best = chamerMatching(img, tpl, results, costs);
     if( best < 0 ) {

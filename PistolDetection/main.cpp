@@ -20,8 +20,6 @@ using namespace std;
 using namespace cv;
 using namespace dlib;
 
-
-
 Vector<Vector<int>> truth;
 const int numPolygons = 10;
 double matchThreshold = .15;
@@ -50,8 +48,8 @@ bool basicChamfer(Mat img, Mat tpl){
     Canny(tpl, tpl, 100, 300, 3);
     
     
-    Vector<Vector<Point> > results;
-    Vector<float> costs;
+    std::vector<std::vector<Point> > results;
+    std::vector<float> costs;
     
     int best = chamerMatching(img, tpl, results, costs);
     if( best < 0 || costs[best] < matchThreshold) {
@@ -270,7 +268,6 @@ int main( int argc, char** argv ) {
     Mat img = imread(argc == 3 ? argv[1] : "./pistol_2.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     Mat cimg;
     cvtColor(img, cimg, CV_GRAY2BGR);
-    //Mat tpl = imread(argc == 3 ? argv[2] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/logo.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_black_small.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     
     // if the image and the template are not edge maps but normal grayscale images,
@@ -286,8 +283,8 @@ int main( int argc, char** argv ) {
     waitKey(0);
     destroyAllWindows();
     
-    Vector<Vector<Point> > results;
-    Vector<float> costs;
+    std::vector<std::vector<Point> > results;
+    std::vector<float> costs;
     imshow( "img", img );
     waitKey(0);
     destroyAllWindows();

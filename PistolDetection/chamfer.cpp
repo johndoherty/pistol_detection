@@ -1405,9 +1405,4 @@ namespace cv
         return bestIdx;
     }
     
-
-    
 }
-
-
-

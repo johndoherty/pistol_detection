@@ -12,11 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-<<<<<<< HEAD
 #include "../dlib-18.6/dlib/svm.h"
-
-=======
->>>>>>> 81e2dcd75ffb1bfc7e00f50996fa7bbca7ff48e9
 #include <iostream>
 #include <fstream>
 
@@ -65,13 +61,9 @@ bool basicChamfer(Mat img, Mat tpl){
     return true;
 }
 
-<<<<<<< HEAD
 /*To be implemented*/
-Vector<Mat> splitIntoImages(Mat img){
+Vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
     Vector<Mat> subImages;
-=======
-vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
-    vector<Mat> subImages;
     int rowSize = ceil((float)img.rows / rows);
     int colSize = ceil((float)img.cols / cols);
     cout << img.rows;
@@ -83,7 +75,6 @@ vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
                                     Range((c*colSize), min(((c+1) * colSize), img.cols))).clone());
         }
     }
->>>>>>> 81e2dcd75ffb1bfc7e00f50996fa7bbca7ff48e9
     return subImages;
 }
 
@@ -256,10 +247,16 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
         }
     }
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
+    double precision = correctIdentification/(correctIdentification + falsePositives);
+    double recall = correctIdentification/(correctIdentification + falseNegatives);
+    double F1 = 2*precision*recall/(precision+recall);
     cout << "False Positives: " << falsePositives << endl;
     cout << "False Negatives: " << falseNegatives << endl;
     cout << "Correct Identifications: " << correctIdentification << endl;
     cout << "Correct Discards: " << correctDiscard << endl;
+    cout << "Precision: " << precision << endl;
+    cout << "Recall: " << recall << endl;
+    cout << "F1 Score: " << F1 << endl;
     cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }
 
@@ -270,19 +267,11 @@ int main( int argc, char** argv ) {
         return 0;
     }
     
-    /*
-     Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo_in_clutter.png", CV_LOAD_IMAGE_GRAYSCALE);
-     Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/logo.png", CV_LOAD_IMAGE_GRAYSCALE);
-     */
-    /*
-     Mat img = imread(argc == 3 ? argv[1] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-     Mat tpl = imread(argc == 3 ? argv[2] : "/Users/aarondamashek/CS231A/pistol_detection/PistolDetection/X077_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);*/
-    
-    Mat img = imread(argc == 3 ? argv[1] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/pistol_2.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat img = imread(argc == 3 ? argv[1] : "./pistol_2.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     Mat cimg;
     cvtColor(img, cimg, CV_GRAY2BGR);
     //Mat tpl = imread(argc == 3 ? argv[2] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/logo.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat tpl = imread(argc == 3 ? argv[1] : "/Users/john/Dropbox/School/CS231a/Project/pistol_detection/PistolDetection/pistol_black_small.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_black_small.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     
     // if the image and the template are not edge maps but normal grayscale images,
     // you might want to uncomment the lines below to produce the maps. You can also
@@ -290,24 +279,18 @@ int main( int argc, char** argv ) {
     
     Canny(img, img, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
-    vector<Mat>images = splitIntoImages(tpl);
+    Vector<Mat>images = splitIntoImages(tpl);
 
     imshow( "img", img );
     imshow( "template", tpl );
     waitKey(0);
     destroyAllWindows();
     
-<<<<<<< HEAD
     Vector<Vector<Point> > results;
     Vector<float> costs;
-=======
     imshow( "img", img );
     waitKey(0);
     destroyAllWindows();
-
-    vector<vector<Point> > results;
-    vector<float> costs;
->>>>>>> 81e2dcd75ffb1bfc7e00f50996fa7bbca7ff48e9
     
     /*
      int chamerMatching( Mat& img, Mat& templ,

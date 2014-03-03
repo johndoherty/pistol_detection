@@ -29,6 +29,11 @@ typedef radial_basis_kernel<subImageResults> kernel;
 typedef decision_function<kernel> dec_funct_type;
 typedef normalized_function<dec_funct_type> funct;
 
+struct image_truth{
+    Vector<Mat> Images;
+    Vector<int> imageTruths;
+};
+
 void populateTruth(){
     //Auto-file read in
     ifstream input( "./truth.txt" );
@@ -41,6 +46,28 @@ void populateTruth(){
         }
         truth.push_back(currFolder);
     }
+}
+
+image_truth readInImages(){
+    image_truth images;
+    for(int i = 1; i <= 120; i++){
+        int imgNum = 1;
+        while(true){
+            string folder = to_string(i);
+            string pic = to_string(imgNum);
+            if(i < 10) folder = "0" + folder;
+            if(imgNum < 10) pic = "0" + pic;
+            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+            Mat cimg;
+            cvtColor(img, cimg, CV_GRAY2BGR);
+            if(!img.data) break;
+            images.Images.push_back(img);
+            images.imageTruths.push_back(truth[i][imgNum]);
+            imgNum++;
+        }
+    }
+    return images;
 }
 
 bool basicChamfer(Mat img, Mat tpl){
@@ -209,41 +236,7 @@ bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
 	return (output >= 0);
 }
 
-void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
-    int falsePositives = 0;
-    int falseNegatives = 0;
-    int correctIdentification = 0;
-    int correctDiscard = 0;
-    for(int i = 1; i <= 1; i++){//Should be set to 120 for the full dataset
-        int imgNum = 1;
-        while(true){
-            string folder = to_string(i);
-            string pic = to_string(imgNum);
-            if(i < 10) folder = "0" + folder;
-            if(imgNum < 10) pic = "0" + pic;
-            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
-            Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
-            Mat cimg;
-            cvtColor(img, cimg, CV_GRAY2BGR);
-            if(!img.data) break;
-            bool gunFound = chamferFunction(img, tpl); //Basic, votingChamfer or MLChamfer
-            if(gunFound){
-                if(truth[i-1][imgNum-1]){
-                correctIdentification+=1;
-                }else{
-                    falsePositives+=1;
-                }
-            }
-            if(!gunFound){
-                if(!truth[i-1][imgNum-1]){
-                correctDiscard+=1;
-                }else{
-                    falseNegatives+=1;
-                }
-            }
-            imgNum++;
-        }
-    }
+void reportResults(int falsePositives, int falseNegatives, int correctIdentification, int correctDiscard){
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
     double precision = correctIdentification/(correctIdentification + falsePositives);
     double recall = correctIdentification/(correctIdentification + falseNegatives);
@@ -256,6 +249,74 @@ void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){
     cout << "Recall: " << recall << endl;
     cout << "F1 Score: " << F1 << endl;
     cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
+}
+
+void testFunction(bool (*chamferFunction)(Mat img, Mat tpl), Mat tpl){//Basic or votingChamfer
+    int falsePositives = 0;
+    int falseNegatives = 0;
+    int correctIdentification = 0;
+    int correctDiscard = 0;
+    
+    image_truth images = readInImages();
+    
+    for(int i = 0; i < images.Images.size(); i++){
+        bool gunFound = chamferFunction(images.Images[i], tpl); //Basic, votingChamfer
+        if(gunFound){
+            if(images.imageTruths[i]){
+                correctIdentification+=1;
+            }else{
+                falsePositives+=1;
+            }
+        }
+        if(!gunFound){
+            if(!images.imageTruths[i]){
+                correctDiscard+=1;
+            }else{
+                falseNegatives+=1;
+            }
+        }
+    }
+    reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
+}
+
+void testML(Mat tpl){
+
+    int falsePositives = 0;
+    int falseNegatives = 0;
+    int correctIdentification = 0;
+    int correctDiscard = 0;
+    
+    image_truth images = readInImages();
+    double splitProportion = 7/10;
+    std::size_t const splitSize = images.Images.size()*splitProportion;
+    Vector<Mat> trainingImages(std::vector<Mat>(images.Images.begin(), images.Images.begin() + splitSize));
+    Vector<Mat> testImages(std::vector<Mat>(images.Images.begin() + splitSize, images.Images.end()));
+    Vector<int> trainingTruths(std::vector<int>(images.imageTruths.begin(), images.imageTruths.begin() + splitSize));
+    Vector<int> testTruths(std::vector<int>(images.imageTruths.begin() + splitSize, images.imageTruths.end()));
+    
+    //Set-up ML
+    funct decision = setUpMLChamfer(tpl, trainingImages, trainingTruths);
+    
+    //Run ML
+    for(int i = 0; i < testImages.size(); i++){
+        bool gunFound = MLChamfer(testImages[i], tpl, decision); //MLChamfer
+        if(gunFound){
+            if(testTruths[i]){
+                correctIdentification+=1;
+            }else{
+                falsePositives+=1;
+            }
+        }
+        if(!gunFound){
+            if(!testTruths[i]){
+                correctDiscard+=1;
+            }else{
+                falseNegatives+=1;
+            }
+        }
+    }
+
+    reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
 }
 
 int main( int argc, char** argv ) {

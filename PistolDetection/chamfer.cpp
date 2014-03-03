@@ -171,6 +171,7 @@ namespace cv
             std::vector<int> addr;
             int addr_width;
             float scale;
+            float angle;
             template_coords_t coords;
             
             template_orientations_t orientations;
@@ -204,6 +205,7 @@ namespace cv
              * @param scale Scale to be resized to
              */
             Template* rescale(float scale);
+            Template* rotate(float angle);
             
             std::vector<int>& getTemplateAddresses(int width);
         };
@@ -843,9 +845,42 @@ namespace cv
      *
      * @param scale Scale to be resized to
      */
-    ChamferMatcher::Template* ChamferMatcher::Template::rescale(float new_scale)
+    ChamferMatcher::Template* ChamferMatcher::Template::rescale(float new_angle)
     {
+        if (fabs(angle-new_angle)<1e-6) return this;
         
+        for (size_t i=0;i<scaled_templates.size();++i) {
+            if (fabs(scaled_templates[i]->scale-new_scale)<1e-6) {
+                return scaled_templates[i];
+            }
+        }
+        
+        float scale_factor = new_scale/scale;
+        
+        Template* tpl = new Template();
+        tpl->scale = new_scale;
+        
+        tpl->center.x = int(center.x*scale_factor+0.5);
+        tpl->center.y = int(center.y*scale_factor+0.5);
+        
+        tpl->size.width = int(size.width*scale_factor+0.5);
+        tpl->size.height = int(size.height*scale_factor+0.5);
+        
+        tpl->coords.resize(coords.size());
+        tpl->orientations.resize(orientations.size());
+        for (size_t i=0;i<coords.size();++i) {
+            tpl->coords[i].first = int(coords[i].first*scale_factor+0.5);
+            tpl->coords[i].second = int(coords[i].second*scale_factor+0.5);
+            tpl->orientations[i] = orientations[i];
+        }
+        scaled_templates.push_back(tpl);
+        
+        return tpl;
+        
+    }
+    
+    ChamferMatcher::Template* ChamferMatcher::Template::rotate(float angle)
+    {
         if (fabs(scale-new_scale)<1e-6) return this;
         
         for (size_t i=0;i<scaled_templates.size();++i) {
@@ -1140,6 +1175,9 @@ namespace cv
         
         ChamferMatcher::Matches* pmatches(new Matches());
         // try each template
+        float bestCost = 1000;
+        float bestScale;
+        Point bestLoc;
         for(size_t i = 0; i < templates.size(); i++) {
             ImageIterator* it = range.iterator();
             while (it->hasNext()) {
@@ -1154,6 +1192,11 @@ namespace cv
                 if (loc.y-tpl->center.y<0 || loc.y+tpl->size.height/2>=dist_img.rows) continue;
                 
                 ChamferMatcher::Match* is = localChamferDistance(loc, dist_img, orientation_img, tpl, _orientation_weight);
+                if (is->cost <= bestCost) {
+                    bestCost = is->cost;
+                    bestScale = scale;
+                    bestLoc = loc;
+                }
                 if(is)
                 {
                     pmatches->push_back(*is);
@@ -1163,6 +1206,13 @@ namespace cv
             
             delete it;
         }
+        std::cout << "Best: \n";
+        std::cout << " Scale: ";
+        std::cout << bestScale;
+        std::cout << "\n Location: ";
+        std::cout << bestLoc;
+        std::cout << "\n Cost: ";
+        std::cout << bestCost;
         return pmatches;
     }
     

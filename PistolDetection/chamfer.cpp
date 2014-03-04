@@ -48,8 +48,11 @@
 #ifdef HAVE_OPENCV_HIGHGUI
 #  include "opencv2/highgui/highgui.hpp"
 #endif
+#include <math.h>
 #include <iostream>
 #include <queue>
+
+#define PI 3.14159265
 
 namespace cv
 {
@@ -60,7 +63,13 @@ namespace cv
     typedef float orientation_t;
     typedef std::vector<coordinate_t> template_coords_t;
     typedef std::vector<orientation_t> template_orientations_t;
-    typedef std::pair<Point, float> location_scale_t;
+    typedef std::pair<float, float> scale_angle_t;
+    typedef struct {
+        Point point;
+        float scale;
+        float rotation;
+    } location_transform_t;
+    //typedef std::pair<Point, scale_angle_t> location_transform_t;
     
     class ChamferMatcher
     {
@@ -77,7 +86,7 @@ namespace cv
         public:
             virtual ~ImageIterator() {}
             virtual bool hasNext() const = 0;
-            virtual location_scale_t next() = 0;
+            virtual location_transform_t next() = 0;
         };
         
         class ImageRange
@@ -116,19 +125,20 @@ namespace cv
             int scales_;
             float min_scale_;
             float max_scale_;
+            int rotations_;
             
             LocationImageRange(const LocationImageRange&);
             LocationImageRange& operator=(const LocationImageRange&);
             
         public:
-            LocationImageRange(const std::vector<Point>& locations, int _scales = 5, float min_scale = 0.6, float max_scale = 1.6) :
-            locations_(locations), scales_(_scales), min_scale_(min_scale), max_scale_(max_scale)
+            LocationImageRange(const std::vector<Point>& locations, int _scales = 5, float min_scale = 0.6, float max_scale = 1.6, int rotations = 10) :
+            locations_(locations), scales_(_scales), min_scale_(min_scale), max_scale_(max_scale), rotations_(rotations)
             {
             }
             
             ImageIterator* iterator() const
             {
-                return new LocationImageIterator(locations_, scales_, min_scale_, max_scale_);
+                return new LocationImageIterator(locations_, scales_, min_scale_, max_scale_, rotations_);
             }
         };
         
@@ -137,19 +147,20 @@ namespace cv
         {
             const std::vector<Point>& locations_;
             const std::vector<float>& scales_;
+            int rotations_;
             
             LocationScaleImageRange(const LocationScaleImageRange&);
             LocationScaleImageRange& operator=(const LocationScaleImageRange&);
         public:
-            LocationScaleImageRange(const std::vector<Point>& locations, const std::vector<float>& _scales) :
-            locations_(locations), scales_(_scales)
+            LocationScaleImageRange(const std::vector<Point>& locations, const std::vector<float>& _scales, int rotations = 10) :
+            locations_(locations), scales_(_scales), rotations_(rotations)
             {
                 assert(locations.size()==_scales.size());
             }
             
             ImageIterator* iterator() const
             {
-                return new LocationScaleImageIterator(locations_, scales_);
+                return new LocationScaleImageIterator(locations_, scales_, rotations_);
             }
         };
         
@@ -167,11 +178,11 @@ namespace cv
             
             
         public:
-            std::vector<Template*> scaled_templates;
+            std::vector<Template*> scaled_rotated_templates;
             std::vector<int> addr;
             int addr_width;
             float scale;
-            float angle;
+            float rotation;
             template_coords_t coords;
             
             template_orientations_t orientations;
@@ -187,10 +198,10 @@ namespace cv
             
             ~Template()
             {
-                for (size_t i=0;i<scaled_templates.size();++i) {
-                    delete scaled_templates[i];
+                for (size_t i=0;i<scaled_rotated_templates.size();++i) {
+                    delete scaled_rotated_templates[i];
                 }
-                scaled_templates.clear();
+                scaled_rotated_templates.clear();
                 coords.clear();
                 orientations.clear();
             }
@@ -204,8 +215,7 @@ namespace cv
              *
              * @param scale Scale to be resized to
              */
-            Template* rescale(float scale);
-            Template* rotate(float angle);
+            Template* tranform(float scale, float rotation);
             
             std::vector<int>& getTemplateAddresses(int width);
         };
@@ -362,9 +372,15 @@ namespace cv
             float min_scale_;
             float max_scale_;
             
+            int rotations_;
+            
             float scale_;
             float scale_step_;
             int scale_cnt_;
+            
+            float rotation_;
+            float rotation_step_;
+            int rotation_cnt_;
             
             bool has_next_;
             
@@ -372,13 +388,13 @@ namespace cv
             LocationImageIterator& operator=(const LocationImageIterator&);
             
         public:
-            LocationImageIterator(const std::vector<Point>& locations, int _scales, float min_scale, float max_scale);
+            LocationImageIterator(const std::vector<Point>& locations, int _scales, float min_scale, float max_scale, int rotations);
             
             bool hasNext() const {
                 return has_next_;
             }
             
-            location_scale_t next();
+            location_transform_t next();
         };
         
         class LocationScaleImageIterator : public ImageIterator
@@ -390,13 +406,21 @@ namespace cv
             
             bool has_next_;
             
+            int rotations_;
+            int rotation_cnt_;
+            float rotation_;
+            float rotation_step_;
+            
             LocationScaleImageIterator(const LocationScaleImageIterator&);
             LocationScaleImageIterator& operator=(const LocationScaleImageIterator&);
             
         public:
-            LocationScaleImageIterator(const std::vector<Point>& locations, const std::vector<float>& _scales) :
-            locations_(locations), scales_(_scales)
+            LocationScaleImageIterator(const std::vector<Point>& locations, const std::vector<float>& _scales, int rotations) :
+            locations_(locations), scales_(_scales), rotations_(rotations)
             {
+                rotation_cnt_ = 0;
+                rotation_ = 0;
+                rotation_step_ = 360 / rotations_;
                 assert(locations.size()==_scales.size());
                 reset();
             }
@@ -411,7 +435,7 @@ namespace cv
                 return has_next_;
             }
             
-            location_scale_t next();
+            location_transform_t next();
         };
         
         class SlidingWindowImageIterator : public ImageIterator
@@ -421,6 +445,9 @@ namespace cv
             float scale_;
             float scale_step_;
             int scale_cnt_;
+            float rotation_;
+            float rotation_step_;
+            int rotation_cnt_;
             
             bool has_next_;
             
@@ -431,17 +458,18 @@ namespace cv
             int scales_;
             float min_scale_;
             float max_scale_;
+            int rotations_;
             
             
         public:
             
-            SlidingWindowImageIterator(int width, int height, int x_step, int y_step, int scales, float min_scale, float max_scale);
+            SlidingWindowImageIterator(int width, int height, int x_step, int y_step, int scales, float min_scale, float max_scale, int rotations);
             
             bool hasNext() const {
                 return has_next_;
             }
             
-            location_scale_t next();
+            location_transform_t next();
         };
         
         
@@ -498,7 +526,8 @@ namespace cv
                                                                            int y_step = 3,
                                                                            int _scales = 5,
                                                                            float min_scale = 0.6,
-                                                                           float max_scale = 1.6) :
+                                                                           float max_scale = 1.6,
+                                                                           int rotations = 20) :
     
     width_(width),
     height_(height),
@@ -506,19 +535,23 @@ namespace cv
     y_step_(y_step),
     scales_(_scales),
     min_scale_(min_scale),
-    max_scale_(max_scale)
+    max_scale_(max_scale),
+    rotations_(rotations)
     {
         x_ = 0;
         y_ = 0;
         scale_cnt_ = 0;
         scale_ = min_scale_;
+        rotation_ = 0;
+        rotation_cnt_ = 0;
         has_next_ = true;
         scale_step_ = (max_scale_-min_scale_)/scales_;
+        rotation_step_ = 360/rotations_;
     }
     
-    location_scale_t ChamferMatcher::SlidingWindowImageIterator::next()
+    location_transform_t ChamferMatcher::SlidingWindowImageIterator::next()
     {
-        location_scale_t next_val = std::make_pair(Point(x_,y_),scale_);
+        location_transform_t next_val = {Point(x_,y_), scale_, rotation_};
         
         x_ += x_step_;
         
@@ -532,9 +565,16 @@ namespace cv
                 scale_cnt_++;
                 
                 if (scale_cnt_ == scales_) {
-                    has_next_ = false;
                     scale_cnt_ = 0;
                     scale_ = min_scale_;
+                    rotation_cnt_ ++;
+                    rotation_ += rotation_step_;
+                    
+                    if (rotation_cnt_ == rotations_) {
+                        has_next_ = false;
+                        rotation_ = 0;
+                        rotation_cnt_ = 0;
+                    }
                 }
             }
         }
@@ -554,22 +594,27 @@ namespace cv
     ChamferMatcher::LocationImageIterator::LocationImageIterator(const std::vector<Point>& locations,
                                                                  int _scales = 5,
                                                                  float min_scale = 0.6,
-                                                                 float max_scale = 1.6) :
+                                                                 float max_scale = 1.6,
+                                                                 int rotations = 5) :
     locations_(locations),
     scales_(_scales),
     min_scale_(min_scale),
-    max_scale_(max_scale)
+    max_scale_(max_scale),
+    rotations_(rotations)
     {
         iter_ = 0;
         scale_cnt_ = 0;
         scale_ = min_scale_;
         has_next_ = (locations_.size()==0 ? false : true);
         scale_step_ = (max_scale_-min_scale_)/scales_;
+        rotation_cnt_ = 0;
+        rotation_ = 0;
+        rotation_step_ = 360 / rotations_;
     }
     
-    location_scale_t ChamferMatcher::LocationImageIterator:: next()
+    location_transform_t ChamferMatcher::LocationImageIterator:: next()
     {
-        location_scale_t next_val = std::make_pair(locations_[iter_],scale_);
+        location_transform_t next_val = {locations_[iter_], scale_, rotation_};
         
         iter_ ++;
         if (iter_==locations_.size()) {
@@ -578,9 +623,17 @@ namespace cv
             scale_cnt_++;
             
             if (scale_cnt_ == scales_) {
-                has_next_ = false;
                 scale_cnt_ = 0;
                 scale_ = min_scale_;
+                rotation_ += rotation_step_;
+                rotation_cnt_ ++;
+                
+                if (rotation_cnt_ == rotations_) {
+                    rotation_cnt_ = 0;
+                    rotation_ = 0;
+                    has_next_ = false;
+
+                }
             }
         }
         
@@ -588,15 +641,21 @@ namespace cv
     }
     
     
-    location_scale_t ChamferMatcher::LocationScaleImageIterator::next()
+    location_transform_t ChamferMatcher::LocationScaleImageIterator::next()
     {
-        location_scale_t next_val = std::make_pair(locations_[iter_],scales_[iter_]);
+        location_transform_t next_val = {locations_[iter_], scales_[iter_], rotation_};
         
         iter_ ++;
         if (iter_==locations_.size()) {
             iter_ = 0;
+            rotation_ += rotation_step_;
+            rotation_cnt_ ++;
             
-            has_next_ = false;
+            if (rotation_cnt_ == rotations_) {
+                rotation_cnt_ = 0;
+                rotation_ = 0;
+                has_next_ = false;
+            }
         }
         
         return next_val;
@@ -825,7 +884,6 @@ namespace cv
         }
     }
     
-    
     vector<int>& ChamferMatcher::Template::getTemplateAddresses(int width)
     {
         if (addr_width!=width) {
@@ -838,26 +896,46 @@ namespace cv
         }
         return addr;
     }
-    
-    
-    /**
-     * Resizes a template
-     *
-     * @param scale Scale to be resized to
-     */
-    ChamferMatcher::Template* ChamferMatcher::Template::rescale(float new_angle)
-    {
-        if (fabs(angle-new_angle)<1e-6) return this;
+
+    bool first = true;
+    ChamferMatcher::Template* ChamferMatcher::Template::tranform(float new_scale, float new_rotation) {
+        if (fabs(scale-new_scale)<1e-6 && fabs(rotation - new_rotation)<1e-6) return this;
         
-        for (size_t i=0;i<scaled_templates.size();++i) {
-            if (fabs(scaled_templates[i]->scale-new_scale)<1e-6) {
-                return scaled_templates[i];
+        for (size_t i=0;i<scaled_rotated_templates.size();++i) {
+            if (fabs(scaled_rotated_templates[i]->scale-new_scale)<1e-6 && fabs(scaled_rotated_templates[i]->rotation-new_rotation)<1e-6) {
+                return scaled_rotated_templates[i];
             }
         }
-        
-        float scale_factor = new_scale/scale;
-        
+
         Template* tpl = new Template();
+        tpl->coords.resize(coords.size());
+        tpl->orientations.resize(orientations.size());
+        
+        // Rotate
+        float rotation_amt = new_rotation - rotation;
+        float cos_r = cos(rotation_amt * PI / 180);
+        float sin_r = sin(rotation_amt * PI / 180);
+        tpl->rotation = new_rotation;
+        for (size_t i=0; i<coords.size(); i++) {
+            
+            tpl->coords[i].first = int(coords[i].first*cos_r + coords[i].second*sin_r);
+            tpl->coords[i].second = int(coords[i].first*(-1*sin_r) + coords[i].second*cos_r);
+            tpl->orientations[i] = orientations[i] + rotation_amt * PI / 180;
+            if (tpl->orientations[i] > (2 * PI)) tpl->orientations[i] -= 2*PI;
+            //else if (tpl->orientations[i] < 0) tpl->orientations[i] += 2*PI;
+            else if (tpl->orientations[i] < 0){
+                while(tpl->orientations[i] < 0){
+                    tpl->orientations[i] += 2*PI;
+                }
+            }
+            if (tpl->orientations[i] > (2*PI) || tpl->orientations[i] < 0) std::cout << tpl->orientations[i] << std::endl;
+            
+        }
+        first = false;
+        
+        
+        // Scale
+        float scale_factor = new_scale/scale;
         tpl->scale = new_scale;
         
         tpl->center.x = int(center.x*scale_factor+0.5);
@@ -866,51 +944,23 @@ namespace cv
         tpl->size.width = int(size.width*scale_factor+0.5);
         tpl->size.height = int(size.height*scale_factor+0.5);
         
-        tpl->coords.resize(coords.size());
-        tpl->orientations.resize(orientations.size());
         for (size_t i=0;i<coords.size();++i) {
-            tpl->coords[i].first = int(coords[i].first*scale_factor+0.5);
-            tpl->coords[i].second = int(coords[i].second*scale_factor+0.5);
-            tpl->orientations[i] = orientations[i];
+            tpl->coords[i].first = int(tpl->coords[i].first*scale_factor+0.5);
+            tpl->coords[i].second = int(tpl->coords[i].second*scale_factor+0.5);
         }
-        scaled_templates.push_back(tpl);
+        
+        scaled_rotated_templates.push_back(tpl);
+        
+        //tpl->show();
+        /*std::cout << "Scale: ";
+        std::cout << new_scale;
+        std::cout << ", ";
+        std::cout << "Rotation: ";
+        std::cout << new_rotation;
+        std::cout << "\n";*/
+        
         
         return tpl;
-        
-    }
-    
-    ChamferMatcher::Template* ChamferMatcher::Template::rotate(float angle)
-    {
-        if (fabs(scale-new_scale)<1e-6) return this;
-        
-        for (size_t i=0;i<scaled_templates.size();++i) {
-            if (fabs(scaled_templates[i]->scale-new_scale)<1e-6) {
-                return scaled_templates[i];
-            }
-        }
-        
-        float scale_factor = new_scale/scale;
-        
-        Template* tpl = new Template();
-        tpl->scale = new_scale;
-        
-        tpl->center.x = int(center.x*scale_factor+0.5);
-        tpl->center.y = int(center.y*scale_factor+0.5);
-        
-        tpl->size.width = int(size.width*scale_factor+0.5);
-        tpl->size.height = int(size.height*scale_factor+0.5);
-        
-        tpl->coords.resize(coords.size());
-        tpl->orientations.resize(orientations.size());
-        for (size_t i=0;i<coords.size();++i) {
-            tpl->coords[i].first = int(coords[i].first*scale_factor+0.5);
-            tpl->coords[i].second = int(coords[i].second*scale_factor+0.5);
-            tpl->orientations[i] = orientations[i];
-        }
-        scaled_templates.push_back(tpl);
-        
-        return tpl;
-        
     }
     
     
@@ -926,7 +976,10 @@ namespace cv
             
             int x = center.x+coords[i].first+pad;
             int y = center.y+coords[i].second+pad;
-            templ_color.at<Vec3b>(y,x)[1]=255;
+            if (x < templ_color.cols && x >= 0 && y < templ_color.rows && y >= 0) {
+                templ_color.at<Vec3b>(y,x)[1]=255;
+            }
+            
             //CV_PIXEL(unsigned char, templ_color,x,y)[1] = 255;
             
             if (i%3==0) {
@@ -1181,11 +1234,12 @@ namespace cv
         for(size_t i = 0; i < templates.size(); i++) {
             ImageIterator* it = range.iterator();
             while (it->hasNext()) {
-                location_scale_t crt = it->next();
+                location_transform_t crt = it->next();
                 
-                Point loc = crt.first;
-                float scale = crt.second;
-                Template* tpl = templates[i]->rescale(scale);
+                Point loc = crt.point;
+                float scale = crt.scale;
+                float rotation = crt.rotation;
+                Template* tpl = templates[i]->tranform(scale, rotation);
                 
                 
                 if (loc.x-tpl->center.x<0 || loc.x+tpl->size.width/2>=dist_img.cols) continue;

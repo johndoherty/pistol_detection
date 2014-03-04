@@ -326,10 +326,10 @@ int main( int argc, char** argv ) {
         return 0;
     }
     
-    Mat img = imread(argc == 3 ? argv[1] : "./pistol_black_rotate.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat img = imread(argc == 3 ? argv[1] : "./pistol_black_rotate_small.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     Mat cimg;
     cvtColor(img, cimg, CV_GRAY2BGR);
-    Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_black_small.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_black_unrotate.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     
     // if the image and the template are not edge maps but normal grayscale images,
     // you might want to uncomment the lines below to produce the maps. You can also
@@ -359,13 +359,15 @@ int main( int argc, char** argv ) {
      double orientationWeight = 0.5, double truncate = 20);
      */
     
-    int best = chamerMatching(img, tpl, results, costs, 1, 50, 1.0, 3, 3, 15, 1.0, 2.0, 0.5, 20);
+    int best = chamerMatching(img, tpl, results, costs, 1, 50, 1.0, 3, 3, 15, 0.5, 1.5, 0.5, 20);
     //int best = chamerMatching(img, tpl, results, costs);
     if( best < 0 ) {
         cout << "not found;\n";
         return 0;
     }
-    /*size_t j,m = results.size();
+    
+    /*
+    size_t j,m = results.size();
     //size_t j = best;
     for(j = 0; j < m; j++) {
         //size_t i, n = results[best].size();

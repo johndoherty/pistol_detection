@@ -15,6 +15,7 @@
 #include "../dlib-18.6/dlib/svm.h"
 #include <iostream>
 #include <fstream>
+#include <numeric>
 
 using namespace std;
 using namespace cv;
@@ -38,6 +39,11 @@ struct image_truth{
 struct chamferResult{
     bool found;
     double cost;
+};
+
+struct subdividedResults{
+    std::vector<std::vector<double> > results;
+    std::vector<int> imageTruth;
 };
 
 /*Read in true values of whether or not a gun is in a specified image*/
@@ -134,39 +140,58 @@ chamferResult votingChamfer(Mat img, Mat tpl){
     return result;
 }
 
-/*Calculate the function to be used for ML using training samples*/
-funct setUpMLChamfer(Mat tpl, Vector<Mat> trainingImages, Vector<int> imageTruths){
-	Vector<Vector<int>> trainingSamples;
-    Vector<int> found;
-    
-
-    std::vector<subImageResults> samples;
-    std::vector<double> labels;//Ground truth
+subdividedResults getAllSubImageResults(Mat tpl){
+    subdividedResults subResults;
     
     bool samplesTested = false;
     if(!samplesTested){
         ofstream results;
-        results.open ("./subImageResults");
+        results.open ("./subImageResults.txt");
         
-        for(int j = 0; j < trainingImages.size(); j++){
-            Vector<Mat> subPolygons = splitIntoImages(trainingImages[j]);
-            for(int i = 0; i < numPolygons; i++){
-                //Include scores??????????
-                chamferResult subresult = basicChamfer(subPolygons[i], tpl);
-                if(subresult.found){
-                    found.push_back(1);//1 is found
-                    //found.push_back(subresult.cost);
-                }else{
-                    found.push_back(0);//0 is not found
-                    //found.push_back(subresult.cost);
+        ofstream truths;
+        truths.open ("./subImageTruths.txt");
+        
+        for(int i = 1; i <= 120; i++){
+            if(i == 97) break; //Ignore this folder of images - they are too small and too many
+            int imgNum = 1;
+            while(true){
+                string folder = to_string(i);
+                string pic = to_string(imgNum);
+                if(i < 10) folder = "0" + folder;
+                if(imgNum < 10) pic = "0" + pic;
+                string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+                Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+                Mat cimg;
+                cvtColor(img, cimg, CV_GRAY2BGR);
+                if(!img.data) break;
+                
+                std::vector<double> found;
+                
+                Vector<Mat> subPolygons = splitIntoImages(img);
+                for(int i = 0; i < numPolygons; i++){
+                    //Include scores??????????
+                    chamferResult subresult = basicChamfer(subPolygons[i], tpl);
+                    if(subresult.found){
+                        found.push_back(1);//1 is found
+                        //found.push_back(subresult.cost);
+                    }else{
+                        found.push_back(0);//0 is not found
+                        //found.push_back(subresult.cost);
+                    }
                 }
+                subResults.results.push_back(found);
+                subResults.imageTruth.push_back(truth[i][imgNum]);
+                
+                //Write samples to file
+                std::stringstream result;
+                std::copy(found.begin(), found.end(), std::ostream_iterator<int>(result));
+                results << result.str() << endl;
+                
+                //Write Truths to file
+                truths << std::to_string(truth[i][imgNum]) << endl;
+
+                imgNum++;
             }
-            trainingSamples.push_back(found);
-            
-            //Write samples to file
-            std::stringstream result;
-            std::copy(found.begin(), found.end(), std::ostream_iterator<int>(result));
-            results << result.str() << endl;
         }
         
         results.close();
@@ -176,19 +201,34 @@ funct setUpMLChamfer(Mat tpl, Vector<Mat> trainingImages, Vector<int> imageTruth
         ifstream input( "./subImageResults.txt" );
         std::string line;
         while (std::getline(input, line)){
-            Vector<int> currImage;
+            std::vector<double> currImage;
             for(int num = 0; num < line.length(); num++){
                 int currNum = atoi(&line[num]);
                 currImage.push_back(currNum);
             }
-            trainingSamples.push_back(currImage);
+            subResults.results.push_back(currImage);
+        }
+        
+        ifstream input2( "./subImageTruths.txt" );
+        std::string line2;
+        while (std::getline(input, line)){
+            int truth = atoi(&line[0]);
+            subResults.imageTruth.push_back(truth);
         }
     }
+    return subResults;
+}
+
+/*Calculate the function to be used for ML using training samples*/
+funct setUpMLChamfer(Mat tpl, std::vector<std::vector<double> > imageFeatures, std::vector<int> imageTruths){
+
+    std::vector<subImageResults> samples;
+    std::vector<double> labels;//Ground truth
     
-    for(int i = 0; i < trainingSamples.size(); i++){
+    for(int i = 0; i < imageFeatures.size(); i++){
         subImageResults sample;
         for(int j = 0; j < numPolygons; j++){
-            sample(j) = trainingSamples[i][j];
+            sample(j) = imageFeatures[i][j];
             samples.push_back(sample);
         }
         labels.push_back(imageTruths[i]);
@@ -273,6 +313,26 @@ bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
 	return (output >= 0);
 }
 
+/*Use trained system to determine whether or not a gun is present based on subimage results*/
+bool MLChamferByFeatures(std::vector<double> features, funct decisionFunction){
+    
+    //Find results for sub-images
+    subImageResults found;
+	for(int i = 0; i < numPolygons; i++){
+        found(i) = features[i];
+	}
+    
+    //Do Machine Learning to determine if whole image matches
+    double output = decisionFunction(found);
+    
+    cout << "The classifier output is " << output << endl;
+    
+    //The decision function will return values
+    // >= 0 for samples it predicts are in the +1 class and numbers < 0 for samples it
+    // predicts to be in the -1 class.
+	return (output >= 0);
+}
+
 /*Report the results of a test*/
 void reportResults(int falsePositives, int falseNegatives, int correctIdentification, int correctDiscard){
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
@@ -291,26 +351,81 @@ void reportResults(int falsePositives, int falseNegatives, int correctIdentifica
     cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }
 
-/*Test the performance of either basic or voting chamfer against all images*/
-void testFunction(chamferResult (*chamferFunction)(Mat img, Mat tpl), Mat tpl){//Basic or votingChamfer
+/*Test the performance of basic chamfer against all images*/
+void basicChamferTest(Mat tpl){//Basic or votingChamfer
     int falsePositives = 0;
     int falseNegatives = 0;
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    image_truth images = readInImages();
-    for(int i = 0; i < 10; i++){
-    //for(int i = 0; i < images.Images.size(); i++){
-        bool gunFound = chamferFunction(images.Images[i], tpl).found; //Basic, votingChamfer
+    for(int i = 1; i <= 120; i++){
+        if(i == 97) break; //Ignore this folder of images - they are too small and too many
+        int imgNum = 1;
+        while(true){
+            string folder = to_string(i);
+            string pic = to_string(imgNum);
+            if(i < 10) folder = "0" + folder;
+            if(imgNum < 10) pic = "0" + pic;
+            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+            Mat cimg;
+            cvtColor(img, cimg, CV_GRAY2BGR);
+            if(!img.data) break;
+            bool imgTruth = truth[i][imgNum];
+            bool gunFound = basicChamfer(img, tpl).found;
+            if(gunFound){
+                if(imgTruth){
+                    correctIdentification+=1;
+                }else{
+                    falsePositives+=1;
+                }
+            }
+            if(!gunFound){
+                if(!imgTruth){
+                    correctDiscard+=1;
+                }else{
+                    falseNegatives+=1;
+                }
+            }
+            
+            imgNum++;
+        }
+    }
+    reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
+}
+
+/*Test the performance of voting chamfer against all images*/
+void votingChamferTest(Mat tpl){
+    int falsePositives = 0;
+    int falseNegatives = 0;
+    int correctIdentification = 0;
+    int correctDiscard = 0;
+    subdividedResults subResults = getAllSubImageResults(tpl);
+    
+    for(int i = 0; i < subResults.imageTruth.size(); i++){
+        bool imgTruth = subResults.imageTruth[i];
+        bool gunFound;
+        std::vector<double> img = subResults.results[i];
+        double detected = 0;
+        for(int k = 0; k < img.size(); k++){
+            detected += img[k];
+        }
+        
+        if(detected > numPolygons/2){
+            gunFound = true;
+        }else{
+            gunFound = false;
+        }
+        
         if(gunFound){
-            if(images.imageTruths[i]){
+            if(imgTruth){
                 correctIdentification+=1;
             }else{
                 falsePositives+=1;
             }
         }
         if(!gunFound){
-            if(!images.imageTruths[i]){
+            if(!imgTruth){
                 correctDiscard+=1;
             }else{
                 falseNegatives+=1;
@@ -321,29 +436,32 @@ void testFunction(chamferResult (*chamferFunction)(Mat img, Mat tpl), Mat tpl){/
 }
 
 /*Test the performance of ML chamfer against all images*/
-void testML(Mat tpl){
+void mlChamferTest(Mat tpl){
 
     int falsePositives = 0;
     int falseNegatives = 0;
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    image_truth images = readInImages();
-    randomize_samples(images.Images, images.imageTruths);//Make sure to test that it actually randomizes them
+    subdividedResults subResults = getAllSubImageResults(tpl);
+    
+    randomize_samples(subResults.results, subResults.imageTruth);//Make sure to test that it actually randomizes them
     
     double splitProportion = 7/10;
-    std::size_t const splitSize = images.Images.size()*splitProportion; //Make sure to test and see that this works
-    Vector<Mat> trainingImages(std::vector<Mat>(images.Images.begin(), images.Images.begin() + splitSize));
-    Vector<Mat> testImages(std::vector<Mat>(images.Images.begin() + splitSize, images.Images.end()));
-    Vector<int> trainingTruths(std::vector<int>(images.imageTruths.begin(), images.imageTruths.begin() + splitSize));
-    Vector<int> testTruths(std::vector<int>(images.imageTruths.begin() + splitSize, images.imageTruths.end()));
+    std::size_t const splitSize = subResults.results.size()*splitProportion; //Make sure to test and see that this works
+    std::vector<std::vector<double> > trainingImages(subResults.results.begin(), subResults.results.begin() + splitSize);
+    std::vector<std::vector<double> > testImages(subResults.results.begin() + splitSize, subResults.results.end());
+    std::vector<int> trainingTruths(subResults.imageTruth.begin(), subResults.imageTruth.begin() + splitSize);
+    std::vector<int> testTruths(subResults.imageTruth.begin() + splitSize, subResults.imageTruth.end());
     
     //Set-up ML
     funct decision = setUpMLChamfer(tpl, trainingImages, trainingTruths);
     
     //Run ML
+    
     for(int i = 0; i < testImages.size(); i++){
-        bool gunFound = MLChamfer(testImages[i], tpl, decision); //MLChamfer
+        std::vector<double> features = subResults.results[i];
+        bool gunFound = MLChamferByFeatures(features, decision); //MLChamfer
         if(gunFound){
             if(testTruths[i]){
                 correctIdentification+=1;
@@ -384,17 +502,11 @@ int main( int argc, char** argv ) {
     Vector<Mat>images = splitIntoImages(tpl);
 
     
-    //populateTruth();
-    //testFunction(basicChamfer, tpl);
-    //image_truth imgs = readInImages();
-    //funct f = setUpMLChamfer(tpl, imgs.Images, imgs.imageTruths);
-    //MLChamfer(img, tpl, f);
-    //return 0;
-    
-    imshow( "img", img );
-    imshow( "template", tpl );
-    waitKey(0);
-    destroyAllWindows();
+    populateTruth();
+    basicChamferTest(tpl);
+    //votingChamferTest(tpl);
+    //mlChamferTest(tpl);
+    return 0;
     
     std::vector<std::vector<Point> > results;
     std::vector<float> costs;
@@ -449,11 +561,6 @@ int main( int argc, char** argv ) {
     }
     imshow("result", cimg);
     waitKey();
-    populateTruth();
-    testFunction(basicChamfer, tpl);
-    //image_truth imgs = readInImages();
-    //funct f = setUpMLChamfer(tpl, imgs.Images, imgs.imageTruths);
-    //MLChamfer(img, tpl, f);
     return 0;
 }
 

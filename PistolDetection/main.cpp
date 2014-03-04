@@ -370,10 +370,10 @@ int main( int argc, char** argv ) {
         return 0;
     }
     
-    Mat img = imread(argc == 3 ? argv[1] : "./pistol_black_rotate_small.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     Mat cimg;
     cvtColor(img, cimg, CV_GRAY2BGR);
-    Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_black_unrotate.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+    Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     
     // if the image and the template are not edge maps but normal grayscale images,
     // you might want to uncomment the lines below to produce the maps. You can also
@@ -384,12 +384,12 @@ int main( int argc, char** argv ) {
     Vector<Mat>images = splitIntoImages(tpl);
 
     
-    populateTruth();
-    testFunction(basicChamfer, tpl);
+    //populateTruth();
+    //testFunction(basicChamfer, tpl);
     //image_truth imgs = readInImages();
     //funct f = setUpMLChamfer(tpl, imgs.Images, imgs.imageTruths);
     //MLChamfer(img, tpl, f);
-    return 0;
+    //return 0;
     
     imshow( "img", img );
     imshow( "template", tpl );
@@ -410,19 +410,18 @@ int main( int argc, char** argv ) {
      int padY = 3, int scales = 5, double minScale = 0.6, double maxScale = 1.6,
      double orientationWeight = 0.5, double truncate = 20);
      */
-    
-    int best = chamerMatching(img, tpl, results, costs, 1, 50, 1.0, 3, 3, 15, 0.5, 1.5, 0.5, 20);
-    //int best = chamerMatching(img, tpl, results, costs);
+
+    int best = chamerMatching(img, tpl, results, costs, 1, 20, 1.0, 3, 3, 1, 1.0, 1.0, 1.0, 20);
     if( best < 0 ) {
         cout << "not found;\n";
         return 0;
     }
     
-    /*
-    size_t j,m = results.size();
-    //size_t j = best;
-    for(j = 0; j < m; j++) {
-        //size_t i, n = results[best].size();
+    bool showAllMatches = false;
+    
+    size_t j = showAllMatches ? 0 : best;
+    size_t m = showAllMatches ? results.size() : best + 1;
+    for(; j < m; j++) {
         size_t i, n = results[j].size();
         for( i = 0; i < n; i++ ) {
             Point pt = results[j][i];
@@ -435,21 +434,8 @@ int main( int argc, char** argv ) {
             }
             
         }
-    }*/
-    
-    size_t j = best;
-    size_t i, n = results[best].size();
-    for( i = 0; i < n; i++ ) {
-        Point pt = results[j][i];
-        if(pt.inside(Rect(0, 0, cimg.cols, cimg.rows))) {
-            if (i == best) {
-                cimg.at<Vec3b>(pt) = Vec3b(255, 0, 0);
-            } else {
-                cimg.at<Vec3b>(pt) = Vec3b(0, 255, 0);
-            }
-        }
     }
-    
+
     cout << "Best index: ";
     cout << best;
     cout << "\n";
@@ -462,7 +448,6 @@ int main( int argc, char** argv ) {
         cout << ", ";
     }
     imshow("result", cimg);
-    imshow("edges", img);
     waitKey();
     populateTruth();
     testFunction(basicChamfer, tpl);

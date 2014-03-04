@@ -107,10 +107,11 @@ namespace cv
             int scales_;
             float min_scale_;
             float max_scale_;
+            int rotations_;
             
         public:
-            SlidingWindowImageRange(int width, int height, int x_step = 3, int y_step = 3, int _scales = 5, float min_scale = 0.6, float max_scale = 1.6) :
-            width_(width), height_(height), x_step_(x_step),y_step_(y_step), scales_(_scales), min_scale_(min_scale), max_scale_(max_scale)
+            SlidingWindowImageRange(int width, int height, int x_step = 3, int y_step = 3, int _scales = 5, float min_scale = 0.6, float max_scale = 1.6, int rotations = 10) :
+            width_(width), height_(height), x_step_(x_step),y_step_(y_step), scales_(_scales), min_scale_(min_scale), max_scale_(max_scale), rotations_(rotations)
             {
             }
             
@@ -479,6 +480,7 @@ namespace cv
         Matches matches;
         int pad_x;
         int pad_y;
+        int rotations;
         int scales;
         float minScale;
         float maxScale;
@@ -489,7 +491,7 @@ namespace cv
     public:
         ChamferMatcher(int _max_matches = 20, float _min_match_distance = 1.0, int _pad_x = 3,
                        int _pad_y = 3, int _scales = 5, float _minScale = 0.6, float _maxScale = 1.6,
-                       float _orientation_weight = 0.5, float _truncate = 20)
+                       float _orientation_weight = 0.5, float _truncate = 20, int _rotations = 10)
         {
             max_matches_ = _max_matches;
             min_match_distance_ = _min_match_distance;
@@ -501,6 +503,7 @@ namespace cv
             orientation_weight = _orientation_weight;
             truncate = _truncate;
             count = 0;
+            rotations = _rotations;
             
             matches.resize(max_matches_);
             chamfer_ = new Matching(true);
@@ -586,7 +589,7 @@ namespace cv
     
     ChamferMatcher::ImageIterator* ChamferMatcher::SlidingWindowImageRange::iterator() const
     {
-        return new SlidingWindowImageIterator(width_, height_, x_step_, y_step_, scales_, min_scale_, max_scale_);
+        return new SlidingWindowImageIterator(width_, height_, x_step_, y_step_, scales_, min_scale_, max_scale_, rotations_);
     }
     
     
@@ -920,16 +923,6 @@ namespace cv
             
             tpl->coords[i].first = int(coords[i].first*cos_r + coords[i].second*sin_r);
             tpl->coords[i].second = int(coords[i].first*(-1*sin_r) + coords[i].second*cos_r);
-            tpl->orientations[i] = orientations[i] + rotation_amt * PI / 180;
-            if (tpl->orientations[i] > (2 * PI)) tpl->orientations[i] -= 2*PI;
-            //else if (tpl->orientations[i] < 0) tpl->orientations[i] += 2*PI;
-            else if (tpl->orientations[i] < 0){
-                while(tpl->orientations[i] < 0){
-                    tpl->orientations[i] += 2*PI;
-                }
-            }
-            if (tpl->orientations[i] > (2*PI) || tpl->orientations[i] < 0) std::cout << tpl->orientations[i] << std::endl;
-            
         }
         first = false;
         
@@ -949,15 +942,15 @@ namespace cv
             tpl->coords[i].second = int(tpl->coords[i].second*scale_factor+0.5);
         }
         
+        ChamferMatcher::Matching::findContourOrientations(tpl->coords, tpl->orientations);
         scaled_rotated_templates.push_back(tpl);
         
         //tpl->show();
-        /*std::cout << "Scale: ";
+        std::cout << "Scale: ";
         std::cout << new_scale;
         std::cout << ", ";
         std::cout << "Rotation: ";
-        std::cout << new_rotation;
-        std::cout << "\n";*/
+        std::cout << new_rotation << std::endl;
         
         
         return tpl;
@@ -1228,9 +1221,6 @@ namespace cv
         
         ChamferMatcher::Matches* pmatches(new Matches());
         // try each template
-        float bestCost = 1000;
-        float bestScale;
-        Point bestLoc;
         for(size_t i = 0; i < templates.size(); i++) {
             ImageIterator* it = range.iterator();
             while (it->hasNext()) {
@@ -1246,11 +1236,6 @@ namespace cv
                 if (loc.y-tpl->center.y<0 || loc.y+tpl->size.height/2>=dist_img.rows) continue;
                 
                 ChamferMatcher::Match* is = localChamferDistance(loc, dist_img, orientation_img, tpl, _orientation_weight);
-                if (is->cost <= bestCost) {
-                    bestCost = is->cost;
-                    bestScale = scale;
-                    bestLoc = loc;
-                }
                 if(is)
                 {
                     pmatches->push_back(*is);
@@ -1260,13 +1245,6 @@ namespace cv
             
             delete it;
         }
-        std::cout << "Best: \n";
-        std::cout << " Scale: ";
-        std::cout << bestScale;
-        std::cout << "\n Location: ";
-        std::cout << bestLoc;
-        std::cout << "\n Cost: ";
-        std::cout << bestCost;
         return pmatches;
     }
     
@@ -1435,7 +1413,8 @@ namespace cv
                                                                              pad_y,
                                                                              scales,
                                                                              minScale,
-                                                                             maxScale),
+                                                                             maxScale,
+                                                                             rotations),
                                                      orientation_weight,
                                                      max_matches_,
                                                      min_match_distance_);
@@ -1469,9 +1448,10 @@ namespace cv
         
         ChamferMatcher matcher_(maxMatches, (float)minMatchDistance, padX, padY, scales,
                                 (float)minScale, (float)maxScale,
-                                (float)orientationWeight, (float)truncate);
+                                (float)orientationWeight, (float)truncate, 20);
         
         ChamferMatcher::Template template_(templ, (float)templScale);
+        template_.show();
         ChamferMatcher::Matches match_instances = matcher_.matching(template_, img);
         
         size_t i, nmatches = match_instances.size();

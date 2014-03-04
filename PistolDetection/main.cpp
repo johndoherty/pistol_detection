@@ -298,23 +298,37 @@ void testFunction(chamferResult (*chamferFunction)(Mat img, Mat tpl), Mat tpl){/
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    image_truth images = readInImages();
-    for(int i = 0; i < 10; i++){
-    //for(int i = 0; i < images.Images.size(); i++){
-        bool gunFound = chamferFunction(images.Images[i], tpl).found; //Basic, votingChamfer
-        if(gunFound){
-            if(images.imageTruths[i]){
-                correctIdentification+=1;
-            }else{
-                falsePositives+=1;
+    for(int i = 1; i <= 120; i++){
+        if(i == 97) break; //Ignore this folder of images - they are too small and too many
+        int imgNum = 1;
+        while(true){
+            string folder = to_string(i);
+            string pic = to_string(imgNum);
+            if(i < 10) folder = "0" + folder;
+            if(imgNum < 10) pic = "0" + pic;
+            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+            Mat cimg;
+            cvtColor(img, cimg, CV_GRAY2BGR);
+            if(!img.data) break;
+            bool imgTruth = truth[i][imgNum];
+            bool gunFound = chamferFunction(img, tpl).found; //Basic, votingChamfer
+            if(gunFound){
+                if(imgTruth){
+                    correctIdentification+=1;
+                }else{
+                    falsePositives+=1;
+                }
             }
-        }
-        if(!gunFound){
-            if(!images.imageTruths[i]){
-                correctDiscard+=1;
-            }else{
-                falseNegatives+=1;
+            if(!gunFound){
+                if(!imgTruth){
+                    correctDiscard+=1;
+                }else{
+                    falseNegatives+=1;
+                }
             }
+            
+            imgNum++;
         }
     }
     reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
@@ -390,11 +404,6 @@ int main( int argc, char** argv ) {
     //funct f = setUpMLChamfer(tpl, imgs.Images, imgs.imageTruths);
     //MLChamfer(img, tpl, f);
     return 0;
-    
-    imshow( "img", img );
-    imshow( "template", tpl );
-    waitKey(0);
-    destroyAllWindows();
     
     std::vector<std::vector<Point> > results;
     std::vector<float> costs;

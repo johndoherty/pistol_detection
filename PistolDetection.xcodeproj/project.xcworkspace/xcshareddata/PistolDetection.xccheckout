@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>5177C611-B5A8-4561-9F75-91C00E52C8F4</string>
+	<key>IDESourceControlProjectName</key>
+	<string>PistolDetection</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>15689AF8-8459-4AEB-8A48-1FE5848EA29A</key>
+		<string>https://github.com/johndoherty/pistol_detection.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>PistolDetection.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>15689AF8-8459-4AEB-8A48-1FE5848EA29A</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/johndoherty/pistol_detection.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>15689AF8-8459-4AEB-8A48-1FE5848EA29A</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>15689AF8-8459-4AEB-8A48-1FE5848EA29A</string>
+			<key>IDESourceControlWCCName</key>
+			<string>pistol_detection</string>
+		</dict>
+	</array>
+</dict>
+</plist>

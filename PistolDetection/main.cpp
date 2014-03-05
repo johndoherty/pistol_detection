@@ -94,7 +94,7 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     std::vector<std::vector<Point> > results;
     std::vector<float> costs;
     
-    int best = chamerMatching(img, tpl, results, costs);
+    int best = chamerMatching(img, tpl, results, costs, 1, 20, 1.0, 3, 3, 4, .6, 1.4, 1.0, 20);
     chamferResult result;
     if( best < 0 || costs[best] < matchThreshold) {
         result.found=false;
@@ -481,86 +481,122 @@ void mlChamferTest(Mat tpl){
     reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
 }
 
+#define TEMPL_SCALE 1
+#define MAX_MATCHES 20
+#define MIN_MATCH_DIST 1.0
+#define PAD_X 3
+#define PAD_Y 3
+#define SCALES 4
+#define MIN_SCALE 0.6
+#define MAX_SCALE 1.2
+#define ORIENTATION_WEIGHT 0.9
+#define TRUNCATE 20
+
+
+int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
+    
+    int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
+    if( best < 0 ) {
+        cout << "not found;\n";
+        return 0;
+    }
+    
+    //chamferResult a = votingChamfer(edges, tpl);
+    //cout << a.found << endl;
+
+    for (int i = 0; i < costs.size(); i++) {
+        cout << costs[i];
+        cout << ", ";
+    }
+    cout << endl;
+    return best;
+}
+
+void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
+    size_t i, n = results.size();
+    for( i = 0; i < n; i++ ) {
+        Point pt = results[i];
+        if(pt.inside(Rect(0, 0, img.cols, img.rows))) {
+            img.at<Vec3b>(pt) = color;
+        }
+    }
+}
+
+void displayResults(Mat img, int best, std::vector<std::vector<Point> >&results, bool showAllMatches) {
+    
+    if (showAllMatches) {
+        size_t m = results.size();
+        for(size_t j = 0; j < m; j++) {
+            colorPointsInImage(img, results[j], Vec3b(0, 255, 0));
+        }
+    }
+    colorPointsInImage(img, results[best], Vec3b(255, 0, 0));
+    
+    imshow("result", img);
+    waitKey();
+    destroyAllWindows();
+}
+
 int main( int argc, char** argv ) {
     
     if( argc != 1 && argc != 3 ) {
         //help();
         return 0;
     }
+    Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     
-    Mat img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
-    Mat cimg;
+    img = imread(argc == 3 ? argv[1] : "./X089_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     cvtColor(img, cimg, CV_GRAY2BGR);
-    Mat tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    cvtColor(img, cimgFinal, CV_GRAY2BGR);
+    tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    flip(tpl, tpl_flip, 1);
     
-    // if the image and the template are not edge maps but normal grayscale images,
-    // you might want to uncomment the lines below to produce the maps. You can also
-    // run Sobel instead of Canny.
-    
-    Canny(img, img, 70, 300, 3);
+    Canny(img, edges, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
-    Vector<Mat>images = splitIntoImages(tpl);
+    Canny(tpl_flip, tpl_flip, 150, 500, 3);
+    //Vector<Mat>images = splitIntoImages(tpl);
 
-    
+    /*
     populateTruth();
     basicChamferTest(tpl);
     //votingChamferTest(tpl);
     //mlChamferTest(tpl);
-    return 0;
-    
-    std::vector<std::vector<Point> > results;
-    std::vector<float> costs;
-    imshow( "img", img );
-    waitKey(0);
+    return 0;*/
+    imshow("img", img );
+    imshow("edges", edges);
+    waitKey();
     destroyAllWindows();
     
-    /*
-     int chamerMatching( Mat& img, Mat& templ,
-     CV_OUT vector<vector<Point> >& results, CV_OUT vector<float>& cost,
-     double templScale=1, int maxMatches = 20,
-     double minMatchDistance = 1.0, int padX = 3,
-     int padY = 3, int scales = 5, double minScale = 0.6, double maxScale = 1.6,
-     double orientationWeight = 0.5, double truncate = 20);
-     */
+    std::vector<std::vector<Point>> originalResults;
+    std::vector<float> originalCosts;
+    std::vector<std::vector<Point>> flippedResults;
+    std::vector<float> flippedCosts;
+    std::vector<Point> bestMatch;
+    float bestCost;
 
-    int best = chamerMatching(img, tpl, results, costs, 1, 20, 1.0, 3, 3, 1, 1.0, 1.0, 1.0, 20);
-    if( best < 0 ) {
-        cout << "not found;\n";
-        return 0;
+    int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
+    displayResults(cimg, originalBest, originalResults, true);
+    
+    int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
+    displayResults(cimg, flippedBest, flippedResults, true);
+    
+    if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
+        bestMatch = originalResults[originalBest];
+        bestCost = originalCosts[originalBest];
+    } else {
+        bestMatch = flippedResults[originalBest];
+        bestCost = flippedCosts[originalBest];
     }
     
-    bool showAllMatches = false;
+    cout << "Original cost: " << originalCosts[originalBest] << endl;
+    cout << "Flipped cost: " << flippedCosts[flippedBest] << endl;
     
-    size_t j = showAllMatches ? 0 : best;
-    size_t m = showAllMatches ? results.size() : best + 1;
-    for(; j < m; j++) {
-        size_t i, n = results[j].size();
-        for( i = 0; i < n; i++ ) {
-            Point pt = results[j][i];
-            if(pt.inside(Rect(0, 0, cimg.cols, cimg.rows))) {
-                if (i == best) {
-                    cimg.at<Vec3b>(pt) = Vec3b(255, 0, 0);
-                } else {
-                    cimg.at<Vec3b>(pt) = Vec3b(0, 255, 0);
-                }
-            }
-            
-        }
-    }
-
-    cout << "Best index: ";
-    cout << best;
-    cout << "\n";
-    cout << "With cost: ";
-    cout << costs[best];
-    cout << "\n\n";
-    
-    for (int i = 0; i < costs.size(); i++) {
-        cout << costs[i];
-        cout << ", ";
-    }
-    imshow("result", cimg);
+    colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
+    imshow("Best", cimgFinal);
     waitKey();
-    return 0;
+    destroyAllWindows();
 }
+
+
+
 

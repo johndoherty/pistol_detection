@@ -195,7 +195,7 @@ namespace cv
             {
             }
             
-            Template(Mat& edge_image, float scale_ = 1);
+            Template(Mat& edge_image, float scale_ = 1, float rotation_ = 0);
             
             ~Template()
             {
@@ -573,6 +573,8 @@ namespace cv
                     rotation_cnt_ ++;
                     rotation_ += rotation_step_;
                     
+                    std::cout << (((float)rotation_cnt_/rotations_) + ((float)scale_cnt_/(rotations_ * scales_))) * 100 << "%" << std::endl;
+                    
                     if (rotation_cnt_ == rotations_) {
                         has_next_ = false;
                         rotation_ = 0;
@@ -841,7 +843,7 @@ namespace cv
     
     //////////////////////// Template /////////////////////////////////////
     
-    ChamferMatcher::Template::Template(Mat& edge_image, float scale_) : addr_width(-1), scale(scale_)
+    ChamferMatcher::Template::Template(Mat& edge_image, float scale_, float rotation_) : addr_width(-1), scale(scale_), rotation(rotation_)
     {
         template_coords_t local_coords;
         template_orientations_t local_orientations;
@@ -946,12 +948,13 @@ namespace cv
         scaled_rotated_templates.push_back(tpl);
         
         //tpl->show();
+        /*
         std::cout << "Scale: ";
         std::cout << new_scale;
         std::cout << ", ";
         std::cout << "Rotation: ";
         std::cout << new_rotation << std::endl;
-        
+        */
         
         return tpl;
     }
@@ -1451,7 +1454,7 @@ namespace cv
                                 (float)orientationWeight, (float)truncate, 20);
         
         ChamferMatcher::Template template_(templ, (float)templScale);
-        template_.show();
+        //template_.show();
         ChamferMatcher::Matches match_instances = matcher_.matching(template_, img);
         
         size_t i, nmatches = match_instances.size();

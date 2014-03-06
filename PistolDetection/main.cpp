@@ -95,6 +95,7 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     std::vector<float> costs;
     
     int best = chamerMatching(img, tpl, results, costs);
+    
     chamferResult result;
     if( best < 0 || costs[best] < matchThreshold) {
         result.found=false;
@@ -295,10 +296,10 @@ bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
         chamferResult subresult = basicChamfer(subPolygons[i], tpl);
         if(subresult.found){
             found(i) = 1;//1 is found
-            //found.push_back(subresult.cost);
+            //found(i+1) = (subresult.cost);
         }else{
             found(i) = 0;//0 is not found
-            //found.push_back(subresult.cost);
+            //found(i+1) = (subresult.cost);
         }
 	}
     

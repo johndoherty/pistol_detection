@@ -168,23 +168,23 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 Vector<Mat> subPolygons = splitIntoImages(img);
                 for(int i = 0; i < numPolygons; i++){
-                    //Include scores??????????
                     chamferResult subresult = basicChamfer(subPolygons[i], tpl);
                     if(subresult.found){
                         found.push_back(1);//1 is found
-                        //found.push_back(subresult.cost);
+                        found.push_back(subresult.cost);
                     }else{
                         found.push_back(0);//0 is not found
-                        //found.push_back(subresult.cost);
+                        found.push_back(subresult.cost);
                     }
                 }
                 subResults.results.push_back(found);
                 subResults.imageTruth.push_back(truth[i][imgNum]);
                 
                 //Write samples to file
-                std::stringstream result;
-                std::copy(found.begin(), found.end(), std::ostream_iterator<int>(result));
-                results << result.str() << endl;
+                for(int k = 0; k < found.size(); k++){
+                    results << found[k] << " ";
+                }
+                results << endl;
                 
                 //Write Truths to file
                 truths << std::to_string(truth[i][imgNum]) << endl;
@@ -201,8 +201,14 @@ subdividedResults getAllSubImageResults(Mat tpl){
         std::string line;
         while (std::getline(input, line)){
             std::vector<double> currImage;
-            for(int num = 0; num < line.length(); num++){
-                int currNum = atoi(&line[num]);
+            
+            std::stringstream ss(line);
+            std::istream_iterator<std::string> begin(ss);
+            std::istream_iterator<std::string> end;
+            std::vector<std::string> vstrings(begin, end);
+            
+            for(int num = 0; num < vstrings.size(); num++){
+                double currNum = atof(vstrings[num].c_str());
                 currImage.push_back(currNum);
             }
             subResults.results.push_back(currImage);
@@ -210,8 +216,8 @@ subdividedResults getAllSubImageResults(Mat tpl){
         
         ifstream input2( "./subImageTruths.txt" );
         std::string line2;
-        while (std::getline(input, line)){
-            int truth = atoi(&line[0]);
+        while (std::getline(input, line2)){
+            int truth = atoi(line2.c_str());
             subResults.imageTruth.push_back(truth);
         }
     }
@@ -293,11 +299,11 @@ bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
 	for(int i = 0; i < numPolygons; i++){
         chamferResult subresult = basicChamfer(subPolygons[i], tpl);
         if(subresult.found){
-            found(i) = 1;//1 is found
-            //found(i+1) = (subresult.cost);
+            found(2*i) = 1;//1 is found
+            found(2*i+1) = (subresult.cost);
         }else{
-            found(i) = 0;//0 is not found
-            //found(i+1) = (subresult.cost);
+            found(2*i) = 0;//0 is not found
+            found(2*i+1) = (subresult.cost);
         }
 	}
     
@@ -542,6 +548,7 @@ int main( int argc, char** argv ) {
         //help();
         return 0;
     }
+    
     Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     
     img = imread(argc == 3 ? argv[1] : "./X089_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);

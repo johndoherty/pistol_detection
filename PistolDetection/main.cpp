@@ -492,26 +492,6 @@ void mlChamferTest(Mat tpl){
 #define ORIENTATION_WEIGHT 0.9
 #define TRUNCATE 20
 
-
-int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
-    
-    int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
-    if( best < 0 ) {
-        cout << "not found;\n";
-        return 0;
-    }
-    
-    //chamferResult a = votingChamfer(edges, tpl);
-    //cout << a.found << endl;
-
-    for (int i = 0; i < costs.size(); i++) {
-        cout << costs[i];
-        cout << ", ";
-    }
-    cout << endl;
-    return best;
-}
-
 void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
     size_t i, n = results.size();
     for( i = 0; i < n; i++ ) {
@@ -535,6 +515,38 @@ void displayResults(Mat img, int best, std::vector<std::vector<Point> >&results,
     imshow("result", img);
     waitKey();
     destroyAllWindows();
+}
+
+
+typedef struct {
+    Mat tpl;
+    Mat edges;
+    std::vector<std::vector<Point> > &results;
+    std::vector<float> &costs;
+    int *best;
+} thread_data;
+
+
+void* runMatching(void *threadData) {
+    
+    cout << "Running a thread" << endl;
+    thread_data *input = (thread_data *) threadData;
+    int best = chamerMatching(input->edges, input->tpl, input->results, input->costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
+    if( best < 0 ) {
+        cout << "not found;\n";
+        return 0;
+    }
+    
+    *input->best = best;
+    //chamferResult a = votingChamfer(edges, tpl);
+    //cout << a.found << endl;
+    
+    for (int i = 0; i < input->costs.size(); i++) {
+        cout << input->costs[i];
+        cout << ", ";
+    }
+    cout << endl;
+    pthread_exit(NULL);
 }
 
 int main( int argc, char** argv ) {
@@ -573,12 +585,40 @@ int main( int argc, char** argv ) {
     std::vector<float> flippedCosts;
     std::vector<Point> bestMatch;
     float bestCost;
-
-    int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
-    displayResults(cimg, originalBest, originalResults, true);
+    int originalBest,flippedBest;
+    pthread_attr_t attr;
+    void *status1;
+    void *status2;
     
-    int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
-    displayResults(cimg, flippedBest, flippedResults, true);
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    thread_data originalData = {tpl, edges, originalResults, originalCosts, &originalBest};
+    thread_data flippedData = {tpl_flip, edges.clone(), flippedResults, flippedCosts, &flippedBest};
+    pthread_t originalMatching, flippedMatching;
+    int rc1 = pthread_create(&originalMatching, NULL, runMatching, (void *)&originalData);
+    int rc2 = pthread_create(&flippedMatching, NULL, runMatching, (void *)&flippedData);
+    
+    if(rc1 || rc2) {
+        cout << "Error:unable to create thread," << endl;
+        exit(-1);
+    }
+    
+    rc1 = pthread_join(originalMatching, &status1);
+    if (rc1) {
+        cout << "Error:unable to join," << rc1 << endl;
+        exit(-1);
+    }
+    
+    rc2 = pthread_join(flippedMatching, &status2);
+    if (rc2) {
+        cout << "Error:unable to join," << rc2 << endl;
+        exit(-1);
+    }
+    
+    //displayResults(cimg, flippedBest, flippedResults, true);
+    //displayResults(cimg, originalBest, originalResults, true);
+
     
     if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
         bestMatch = originalResults[originalBest];
@@ -591,10 +631,11 @@ int main( int argc, char** argv ) {
     cout << "Original cost: " << originalCosts[originalBest] << endl;
     cout << "Flipped cost: " << flippedCosts[flippedBest] << endl;
     
-    colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
-    imshow("Best", cimgFinal);
-    waitKey();
+    //colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
+    //imshow("Best", cimgFinal);
+    //waitKey();
     destroyAllWindows();
+    pthread_exit(NULL);
 }
 
 

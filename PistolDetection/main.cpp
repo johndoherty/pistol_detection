@@ -24,7 +24,12 @@ using namespace dlib;
 Vector<Vector<int>> truth;
 const int numPolygons = 10;
 const int features = numPolygons*2;
-double matchThreshold = .15;
+
+static int numFound = 0;
+string folder = "./basicFinds/Found";
+//string folder = "./votingFinds/Found";
+//string folder = "./mLFinds/Found";
+
 
 typedef matrix<double, numPolygons, 1> subImageResults;
 typedef radial_basis_kernel<subImageResults> kernel;
@@ -45,6 +50,49 @@ struct subdividedResults{
     std::vector<std::vector<double> > results;
     std::vector<int> imageTruth;
 };
+
+#define TEMPL_SCALE 1
+#define MAX_MATCHES 20
+#define MIN_MATCH_DIST 1.0
+#define PAD_X 3
+#define PAD_Y 3
+#define SCALES 4
+#define MIN_SCALE 0.6
+#define MAX_SCALE 1.2
+#define ORIENTATION_WEIGHT 0.9
+#define TRUNCATE 20
+
+
+int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
+    
+    int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
+    return best;
+}
+
+void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
+    size_t i, n = results.size();
+    for( i = 0; i < n; i++ ) {
+        Point pt = results[i];
+        if(pt.inside(Rect(0, 0, img.cols, img.rows))) {
+            img.at<Vec3b>(pt) = color;
+        }
+    }
+}
+
+void displayResults(Mat img, int best, std::vector<std::vector<Point> >&results, bool showAllMatches) {
+    
+    if (showAllMatches) {
+        size_t m = results.size();
+        for(size_t j = 0; j < m; j++) {
+            colorPointsInImage(img, results[j], Vec3b(0, 255, 0));
+        }
+    }
+    colorPointsInImage(img, results[best], Vec3b(255, 0, 0));
+    
+    imshow("result", img);
+    waitKey();
+    destroyAllWindows();
+}
 
 /*Read in true values of whether or not a gun is in a specified image*/
 void populateTruth(){
@@ -87,23 +135,50 @@ image_truth readInImages(){
 
 /*Return whether or not a gun was identified using basic chamfer*/
 chamferResult basicChamfer(Mat img, Mat tpl){
-    Canny(img, img, 100, 300, 3);
-    Canny(tpl, tpl, 100, 300, 3);
-    
-    
-    std::vector<std::vector<Point> > results;
-    std::vector<float> costs;
-    int best = chamerMatching(img, tpl, results, costs, 1, 20, 1.0, 3, 3, 4, .6, 1.4, 1.0, 20);
     chamferResult result;
-    if( best < 0 || costs[best] < matchThreshold) {
+    
+    Mat tpl_flip, edges, cimgFinal;
+    cvtColor(img, cimgFinal, CV_GRAY2BGR);
+    flip(tpl, tpl_flip, 1);
+    
+    Canny(img, edges, 70, 300, 3);
+    Canny(tpl, tpl, 150, 500, 3);
+    Canny(tpl_flip, tpl_flip, 150, 500, 3);
+    
+    std::vector<std::vector<Point>> originalResults;
+    std::vector<float> originalCosts;
+    std::vector<std::vector<Point>> flippedResults;
+    std::vector<float> flippedCosts;
+    std::vector<Point> bestMatch;
+    float bestCost;
+    
+    int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
+    
+    int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
+    
+    if(originalBest==-1 && flippedBest==-1){
         result.found=false;
-        //cout << "not found;\n";
-        //return false;
-    }else{
-        result.found = true;
-        result.cost = costs[best];
+        result.cost = INFINITY;
+        return result;
+    }else if(originalBest==-1){
+        bestMatch = flippedResults[originalBest];
+        bestCost = flippedCosts[originalBest];
+    }else if(flippedBest==-1){
+        bestMatch = originalResults[originalBest];
+        bestCost = originalCosts[originalBest];
+    }else if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
+        bestMatch = originalResults[originalBest];
+        bestCost = originalCosts[originalBest];
+    } else {
+        bestMatch = flippedResults[originalBest];
+        bestCost = flippedCosts[originalBest];
     }
-    //return true;
+    
+    result.found = true;
+    result.cost = bestCost;
+    colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
+    imwrite( folder + std::to_string(numFound)+ ".jpg", cimgFinal );
+    numFound++;
     return result;
 }
 
@@ -486,61 +561,7 @@ void mlChamferTest(Mat tpl){
     reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
 }
 
-#define TEMPL_SCALE 1
-#define MAX_MATCHES 20
-#define MIN_MATCH_DIST 1.0
-#define PAD_X 3
-#define PAD_Y 3
-#define SCALES 4
-#define MIN_SCALE 0.6
-#define MAX_SCALE 1.2
-#define ORIENTATION_WEIGHT 0.9
-#define TRUNCATE 20
 
-
-int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
-    
-    int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
-    if( best < 0 ) {
-        cout << "not found;\n";
-        return 0;
-    }
-    
-    //chamferResult a = votingChamfer(edges, tpl);
-    //cout << a.found << endl;
-
-    for (int i = 0; i < costs.size(); i++) {
-        cout << costs[i];
-        cout << ", ";
-    }
-    cout << endl;
-    return best;
-}
-
-void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
-    size_t i, n = results.size();
-    for( i = 0; i < n; i++ ) {
-        Point pt = results[i];
-        if(pt.inside(Rect(0, 0, img.cols, img.rows))) {
-            img.at<Vec3b>(pt) = color;
-        }
-    }
-}
-
-void displayResults(Mat img, int best, std::vector<std::vector<Point> >&results, bool showAllMatches) {
-    
-    if (showAllMatches) {
-        size_t m = results.size();
-        for(size_t j = 0; j < m; j++) {
-            colorPointsInImage(img, results[j], Vec3b(0, 255, 0));
-        }
-    }
-    colorPointsInImage(img, results[best], Vec3b(255, 0, 0));
-    
-    imshow("result", img);
-    waitKey();
-    destroyAllWindows();
-}
 
 int main( int argc, char** argv ) {
     
@@ -556,6 +577,17 @@ int main( int argc, char** argv ) {
     cvtColor(img, cimgFinal, CV_GRAY2BGR);
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     flip(tpl, tpl_flip, 1);
+    
+    imshow("img", img );
+    imshow("template",tpl);
+    Canny(img, edges, 70, 300, 3);
+    imshow("edges", edges);
+    waitKey();
+    destroyAllWindows();
+    
+    basicChamfer(img, tpl);
+    return 0;
+    
     
     Canny(img, edges, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
@@ -599,6 +631,8 @@ int main( int argc, char** argv ) {
     
     colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
     imshow("Best", cimgFinal);
+    imwrite( "./Best.jpg", cimgFinal );
+    
     waitKey();
     destroyAllWindows();
 }

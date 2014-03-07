@@ -16,6 +16,7 @@
 #include <iostream>
 #include <fstream>
 #include <numeric>
+#include <ctime>
 
 using namespace std;
 using namespace cv;
@@ -225,6 +226,11 @@ subdividedResults getAllSubImageResults(Mat tpl){
         ofstream truths;
         truths.open ("./subImageTruths.txt");
         
+        ofstream times;
+        times.open ("./votingTimes.txt");
+        ofstream costs;
+        costs.open ("./votingCosts.txt");
+        
         for(int i = 1; i <= 120; i++){
             if(i == 97) break; //Ignore this folder of images - they are too small and too many
             int imgNum = 1;
@@ -241,6 +247,8 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 std::vector<double> found;
                 
+                clock_t begin = clock();
+                
                 Vector<Mat> subPolygons = splitIntoImages(img);
                 for(int i = 0; i < numPolygons; i++){
                     chamferResult subresult = basicChamfer(subPolygons[i], tpl);
@@ -251,9 +259,15 @@ subdividedResults getAllSubImageResults(Mat tpl){
                         found.push_back(0);//0 is not found
                         found.push_back(subresult.cost);
                     }
+                    costs << to_string(subresult.cost) << endl;
                 }
                 subResults.results.push_back(found);
                 subResults.imageTruth.push_back(truth[i][imgNum]);
+                
+                clock_t end = clock();
+                double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+                times << to_string(elapsed_secs) << endl;
+                costs << endl;
                 
                 //Write samples to file
                 for(int k = 0; k < found.size(); k++){
@@ -433,6 +447,12 @@ void reportResults(int falsePositives, int falseNegatives, int correctIdentifica
 
 /*Test the performance of basic chamfer against all images*/
 void basicChamferTest(Mat tpl){//Basic or votingChamfer
+    
+    ofstream times;
+    times.open ("./basicTimes.txt");
+    ofstream costs;
+    costs.open ("./basicCosts.txt");
+    
     int falsePositives = 0;
     int falseNegatives = 0;
     int correctIdentification = 0;
@@ -452,7 +472,18 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             cvtColor(img, cimg, CV_GRAY2BGR);
             if(!img.data) break;
             bool imgTruth = truth[i][imgNum];
-            bool gunFound = basicChamfer(img, tpl).found;
+            
+            clock_t begin = clock();
+            
+            chamferResult test = basicChamfer(img, tpl);
+            bool gunFound = test.found;
+            
+            clock_t end = clock();
+            double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+            times << to_string(elapsed_secs) << endl;
+            costs << to_string(test.cost) << endl;
+            
+            
             if(gunFound){
                 if(imgTruth){
                     correctIdentification+=1;
@@ -523,6 +554,11 @@ void mlChamferTest(Mat tpl){
     int correctIdentification = 0;
     int correctDiscard = 0;
     
+    ofstream times;
+    times.open ("./mLTimes.txt");
+    ofstream costs;
+    costs.open ("./mLCosts.txt");
+    
     subdividedResults subResults = getAllSubImageResults(tpl);
     
     randomize_samples(subResults.results, subResults.imageTruth);//Make sure to test that it actually randomizes them
@@ -541,7 +577,15 @@ void mlChamferTest(Mat tpl){
     
     for(int i = 0; i < testImages.size(); i++){
         std::vector<double> features = subResults.results[i];
+        
+        clock_t begin = clock();
+        
         bool gunFound = MLChamferByFeatures(features, decision); //MLChamfer
+        
+        clock_t end = clock();
+        double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+        times << to_string(elapsed_secs) << endl;
+        
         if(gunFound){
             if(testTruths[i]){
                 correctIdentification+=1;

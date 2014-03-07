@@ -561,7 +561,35 @@ void mlChamferTest(Mat tpl){
     reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
 }
 
+typedef struct {
+    Mat tpl;
+    Mat edges;
+    std::vector<std::vector<Point> > &results;
+    std::vector<float> &costs;
+    int *best;
+} thread_data;
 
+
+void* runMatching(void *threadData) {
+    
+    thread_data *input = (thread_data *) threadData;
+    int best = chamerMatching(input->edges, input->tpl, input->results, input->costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
+    if( best < 0 ) {
+        cout << "not found;\n";
+        return 0;
+    }
+    
+    *input->best = best;
+    //chamferResult a = votingChamfer(edges, tpl);
+    //cout << a.found << endl;
+    
+    for (int i = 0; i < input->costs.size(); i++) {
+        cout << input->costs[i];
+        cout << ", ";
+    }
+    cout << endl;
+    pthread_exit(NULL);
+}
 
 int main( int argc, char** argv ) {
     
@@ -585,8 +613,8 @@ int main( int argc, char** argv ) {
     waitKey();
     destroyAllWindows();
     
-    basicChamfer(img, tpl);
-    return 0;
+    //basicChamfer(img, tpl);
+    //return 0;
     
     
     Canny(img, edges, 70, 300, 3);
@@ -611,12 +639,41 @@ int main( int argc, char** argv ) {
     std::vector<float> flippedCosts;
     std::vector<Point> bestMatch;
     float bestCost;
-
-    int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
-    displayResults(cimg, originalBest, originalResults, true);
+    int originalBest,flippedBest;
+    pthread_attr_t attr;
+    void *status1;
+    void *status2;
     
-    int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
-    displayResults(cimg, flippedBest, flippedResults, true);
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    size_t size;
+    pthread_attr_getstacksize(&attr, &size);
+    pthread_attr_setstacksize(&attr, 8*size);
+    cout << size;
+
+    thread_data originalData = {tpl, edges, originalResults, originalCosts, &originalBest};
+    thread_data flippedData = {tpl_flip, edges.clone(), flippedResults, flippedCosts, &flippedBest};
+    
+    pthread_t originalMatching, flippedMatching;
+    int rc1 = pthread_create(&originalMatching, &attr, runMatching, (void *)&originalData);
+    int rc2 = pthread_create(&flippedMatching, &attr, runMatching, (void *)&flippedData);
+    
+    if(rc1 || rc2) {
+        cout << "Error:unable to create thread," << endl;
+        exit(-1);
+    }
+    
+    rc1 = pthread_join(originalMatching, &status1);
+    if (rc1) {
+        cout << "Error:unable to join," << rc1 << endl;
+        exit(-1);
+    }
+    
+    rc2 = pthread_join(flippedMatching, &status2);
+    if (rc2) {
+        cout << "Error:unable to join," << rc2 << endl;
+        exit(-1);
+    }
     
     if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
         bestMatch = originalResults[originalBest];
@@ -635,6 +692,7 @@ int main( int argc, char** argv ) {
     
     waitKey();
     destroyAllWindows();
+    pthread_exit(NULL);
 }
 
 

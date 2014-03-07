@@ -592,12 +592,17 @@ int main( int argc, char** argv ) {
     
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    size_t size;
+    pthread_attr_getstacksize(&attr, &size);
+    pthread_attr_setstacksize(&attr, 8*size);
+    cout << size;
 
     thread_data originalData = {tpl, edges, originalResults, originalCosts, &originalBest};
     thread_data flippedData = {tpl_flip, edges.clone(), flippedResults, flippedCosts, &flippedBest};
+    
     pthread_t originalMatching, flippedMatching;
-    int rc1 = pthread_create(&originalMatching, NULL, runMatching, (void *)&originalData);
-    int rc2 = pthread_create(&flippedMatching, NULL, runMatching, (void *)&flippedData);
+    int rc1 = pthread_create(&originalMatching, &attr, runMatching, (void *)&originalData);
+    int rc2 = pthread_create(&flippedMatching, &attr, runMatching, (void *)&flippedData);
     
     if(rc1 || rc2) {
         cout << "Error:unable to create thread," << endl;
@@ -616,10 +621,6 @@ int main( int argc, char** argv ) {
         exit(-1);
     }
     
-    //displayResults(cimg, flippedBest, flippedResults, true);
-    //displayResults(cimg, originalBest, originalResults, true);
-
-    
     if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
         bestMatch = originalResults[originalBest];
         bestCost = originalCosts[originalBest];
@@ -631,9 +632,9 @@ int main( int argc, char** argv ) {
     cout << "Original cost: " << originalCosts[originalBest] << endl;
     cout << "Flipped cost: " << flippedCosts[flippedBest] << endl;
     
-    //colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
-    //imshow("Best", cimgFinal);
-    //waitKey();
+    colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
+    imshow("Best", cimgFinal);
+    waitKey();
     destroyAllWindows();
     pthread_exit(NULL);
 }

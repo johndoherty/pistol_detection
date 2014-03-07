@@ -1454,7 +1454,7 @@ namespace cv
                                 (float)minScale, (float)maxScale,
                                 (float)orientationWeight, (float)truncate, 20);
         
-        ChamferMatcher::Template template_(templ, (float)templScale);
+        ChamferMatcher::Template template_(templ, (float)templScale, (float)0);
         //template_.show();
         ChamferMatcher::Matches match_instances = matcher_.matching(template_, img);
         

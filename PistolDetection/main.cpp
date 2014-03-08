@@ -23,7 +23,7 @@ using namespace cv;
 using namespace dlib;
 
 Vector<Vector<int>> truth;
-const int numPolygons = 10;
+const int numPolygons = 2;
 const int features = numPolygons*2;
 
 static int numFound = 0;
@@ -151,14 +151,16 @@ void populateTruth(){
 image_truth readInImages(){
     image_truth images;
     for(int i = 1; i <= 120; i++){
-        if(i == 97) break; //Ignore this folder of images
+        if(i == 97) continue; //Ignore this folder of images
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
             string pic = to_string(imgNum);
+            if(i < 100) folder = "0" + folder;
+            if(imgNum < 100) pic = "0" + pic;
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
-            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
             cvtColor(img, cimg, CV_GRAY2BGR);
@@ -287,14 +289,16 @@ subdividedResults getAllSubImageResults(Mat tpl){
         costs.open ("./votingCosts-" + std::to_string(numPolygons) + ".txt");
         
         for(int i = 1; i <= 120; i++){
-            if(i == 97) break; //Ignore this folder of images - they are too small and too many
+            if(i == 97) continue; //Ignore this folder of images - they are too small and too many
             int imgNum = 1;
             while(true){
                 string folder = to_string(i);
                 string pic = to_string(imgNum);
+                if(i < 100) folder = "0" + folder;
+                if(imgNum < 100) pic = "0" + pic;
                 if(i < 10) folder = "0" + folder;
                 if(imgNum < 10) pic = "0" + pic;
-                string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+                string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
                 Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
                 Mat cimg;
                 cvtColor(img, cimg, CV_GRAY2BGR);
@@ -514,14 +518,16 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     int correctDiscard = 0;
     
     for(int i = 1; i <= 120; i++){
-        if(i == 97) break; //Ignore this folder of images - they are too small and too many
+        if(i == 97) continue; //Ignore this folder of images - they are too small and too many
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
             string pic = to_string(imgNum);
+            if(i < 100) folder = "0" + folder;
+            if(imgNum < 100) pic = "0" + pic;
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
-            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
             cvtColor(img, cimg, CV_GRAY2BGR);
@@ -666,6 +672,9 @@ int main( int argc, char** argv ) {
         //help();
         return 0;
     }
+    
+    readInImages();
+    return 0;
     
     Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     

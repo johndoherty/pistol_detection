@@ -28,7 +28,7 @@ const int features = numPolygons*2;
 
 static int numFound = 0;
 string folder = "./basicFinds/Found";
-//string folder = "./votingFinds/Found";
+//string folder = "./votingFinds/" + std::to_string(numPolygons) + "/Found";
 //string folder = "./mLFinds/Found";
 
 
@@ -287,15 +287,15 @@ subdividedResults getAllSubImageResults(Mat tpl){
     bool samplesTested = false;
     if(!samplesTested){
         ofstream results;
-        results.open ("./subImageResults.txt");
+        results.open ("./subImageResults-" + std::to_string(numPolygons) + ".txt");
         
         ofstream truths;
-        truths.open ("./subImageTruths.txt");
+        truths.open ("./subImageTruths-" + std::to_string(numPolygons) + ".txt");
         
         ofstream times;
-        times.open ("./votingTimes.txt");
+        times.open ("./votingTimes-" + std::to_string(numPolygons) + ".txt");
         ofstream costs;
-        costs.open ("./votingCosts.txt");
+        costs.open ("./votingCosts-" + std::to_string(numPolygons) + ".txt");
         
         for(int i = 1; i <= 120; i++){
             if(i == 97) break; //Ignore this folder of images - they are too small and too many
@@ -315,7 +315,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 clock_t begin = clock();
                 
-                Vector<Mat> subPolygons = splitIntoImages(img);
+                Vector<Mat> subPolygons = splitIntoImages(img, numPolygons, numPolygons);
                 for(int i = 0; i < numPolygons; i++){
                     chamferResult subresult = basicChamfer(subPolygons[i], tpl);
                     if(subresult.found){
@@ -352,7 +352,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
     }else{
         //read samples from file
         //How would this work with costs as well??????
-        ifstream input( "./subImageResults.txt" );
+        ifstream input( "./subImageResults-" + std::to_string(numPolygons) + ".txt" );
         std::string line;
         while (std::getline(input, line)){
             std::vector<double> currImage;
@@ -369,7 +369,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
             subResults.results.push_back(currImage);
         }
         
-        ifstream input2( "./subImageTruths.txt" );
+        ifstream input2( "./subImageTruths-" + std::to_string(numPolygons) + ".txt" );
         std::string line2;
         while (std::getline(input, line2)){
             int truth = atoi(line2.c_str());
@@ -446,7 +446,7 @@ funct setUpMLChamfer(Mat tpl, std::vector<std::vector<double> > imageFeatures, s
 
 /*Use trained system to determine whether or not a gun is present based on subimage results*/
 bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
-	Vector<Mat> subPolygons = splitIntoImages(img);
+	Vector<Mat> subPolygons = splitIntoImages(img, numPolygons, numPolygons);
     
 
     //Find results for sub-images
@@ -686,8 +686,8 @@ int main( int argc, char** argv ) {
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     flip(tpl, tpl_flip, 1);
     
-    //basicChamfer(img, tpl);
-    //return 0;
+    basicChamfer(img, tpl);
+    return 0;
     
     
     //Canny(img, edges, 70, 300, 3);

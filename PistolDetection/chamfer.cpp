@@ -42,6 +42,9 @@
 //          Stefano Fabri
 //        from Univ. of Rome
 //
+// Rotation transform added by:
+// Aaron Damashek, John Doherty
+//
 
 #include "opencv2/opencv_modules.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -1455,7 +1458,6 @@ namespace cv
                                 (float)orientationWeight, (float)truncate, 20);
         
         ChamferMatcher::Template template_(templ, (float)templScale, (float)0);
-        //template_.show();
         ChamferMatcher::Matches match_instances = matcher_.matching(template_, img);
         
         size_t i, nmatches = match_instances.size();

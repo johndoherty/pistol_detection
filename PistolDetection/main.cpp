@@ -36,6 +36,14 @@ typedef radial_basis_kernel<subImageResults> kernel;
 typedef decision_function<kernel> dec_funct_type;
 typedef normalized_function<dec_funct_type> funct;
 
+typedef struct {
+    Mat *tpl;
+    Mat *edges;
+    std::vector<std::vector<Point> > *results;
+    std::vector<float> *costs;
+    int *best;
+} thread_data;
+
 struct image_truth{
     Vector<Mat> Images;
     Vector<int> imageTruths;
@@ -67,6 +75,35 @@ int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, s
     
     int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
     return best;
+}
+
+void* runMatching(void *threadData) {
+    
+    thread_data *input = (thread_data *) threadData;
+    *input->best = chamerMatching(*input->edges, *input->tpl, *input->results, *input->costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
+    pthread_exit(NULL);
+}
+
+void threadedMatching(Mat* edges, Mat* tpl, std::vector<std::vector<Point> > *results, std::vector<float> *costs, int *best, pthread_t *thread) {
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    size_t size;
+    pthread_attr_getstacksize(&attr, &size);
+    pthread_attr_setstacksize(&attr, 8*size);
+    thread_data *data;
+    data = (thread_data *)malloc(sizeof(thread_data));
+    data->tpl = tpl;
+    data->edges = edges;
+    data->results = results;
+    data->costs = costs;
+    data->best = best;
+
+    int rc = pthread_create(thread, &attr, runMatching, data);
+    
+    if(rc) {
+        cout << "Error:unable to create thread," << endl;
+    }
 }
 
 void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
@@ -150,11 +187,29 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     std::vector<std::vector<Point>> flippedResults;
     std::vector<float> flippedCosts;
     std::vector<Point> bestMatch;
+    int originalBest, flippedBest;
+    void *status1, *status2;
     float bestCost;
     
-    int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
+    //int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
     
-    int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
+    //int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
+    
+    pthread_t originalMatching, flippedMatching;
+    threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
+    threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
+    
+    int rc = pthread_join(originalMatching, &status1);
+    if (rc) {
+        cout << "Error:unable to join," << rc << endl;
+        exit(-1);
+    }
+    
+    rc = pthread_join(flippedMatching, &status2);
+    if (rc) {
+        cout << "Error:unable to join," << rc << endl;
+        exit(-1);
+    }
     
     if(originalBest==-1 && flippedBest==-1){
         result.found=false;
@@ -561,36 +616,6 @@ void mlChamferTest(Mat tpl){
     reportResults(falsePositives, falseNegatives, correctIdentification, correctDiscard);
 }
 
-typedef struct {
-    Mat tpl;
-    Mat edges;
-    std::vector<std::vector<Point> > &results;
-    std::vector<float> &costs;
-    int *best;
-} thread_data;
-
-
-void* runMatching(void *threadData) {
-    
-    thread_data *input = (thread_data *) threadData;
-    int best = chamerMatching(input->edges, input->tpl, input->results, input->costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
-    if( best < 0 ) {
-        cout << "not found;\n";
-        return 0;
-    }
-    
-    *input->best = best;
-    //chamferResult a = votingChamfer(edges, tpl);
-    //cout << a.found << endl;
-    
-    for (int i = 0; i < input->costs.size(); i++) {
-        cout << input->costs[i];
-        cout << ", ";
-    }
-    cout << endl;
-    pthread_exit(NULL);
-}
-
 int main( int argc, char** argv ) {
     
     if( argc != 1 && argc != 3 ) {
@@ -600,18 +625,11 @@ int main( int argc, char** argv ) {
     
     Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     
-    img = imread(argc == 3 ? argv[1] : "./X089_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     cvtColor(img, cimg, CV_GRAY2BGR);
     cvtColor(img, cimgFinal, CV_GRAY2BGR);
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     flip(tpl, tpl_flip, 1);
-    
-    imshow("img", img );
-    imshow("template",tpl);
-    Canny(img, edges, 70, 300, 3);
-    imshow("edges", edges);
-    waitKey();
-    destroyAllWindows();
     
     //basicChamfer(img, tpl);
     //return 0;
@@ -628,10 +646,6 @@ int main( int argc, char** argv ) {
     //votingChamferTest(tpl);
     //mlChamferTest(tpl);
     return 0;*/
-    imshow("img", img );
-    imshow("edges", edges);
-    waitKey();
-    destroyAllWindows();
     
     std::vector<std::vector<Point>> originalResults;
     std::vector<float> originalCosts;
@@ -640,38 +654,22 @@ int main( int argc, char** argv ) {
     std::vector<Point> bestMatch;
     float bestCost;
     int originalBest,flippedBest;
-    pthread_attr_t attr;
     void *status1;
     void *status2;
     
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    size_t size;
-    pthread_attr_getstacksize(&attr, &size);
-    pthread_attr_setstacksize(&attr, 8*size);
-    cout << size;
-
-    thread_data originalData = {tpl, edges, originalResults, originalCosts, &originalBest};
-    thread_data flippedData = {tpl_flip, edges.clone(), flippedResults, flippedCosts, &flippedBest};
-    
     pthread_t originalMatching, flippedMatching;
-    int rc1 = pthread_create(&originalMatching, &attr, runMatching, (void *)&originalData);
-    int rc2 = pthread_create(&flippedMatching, &attr, runMatching, (void *)&flippedData);
+    threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
+    threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
     
-    if(rc1 || rc2) {
-        cout << "Error:unable to create thread," << endl;
+    int rc = pthread_join(originalMatching, &status1);
+    if (rc) {
+        cout << "Error:unable to join," << rc << endl;
         exit(-1);
     }
     
-    rc1 = pthread_join(originalMatching, &status1);
-    if (rc1) {
-        cout << "Error:unable to join," << rc1 << endl;
-        exit(-1);
-    }
-    
-    rc2 = pthread_join(flippedMatching, &status2);
-    if (rc2) {
-        cout << "Error:unable to join," << rc2 << endl;
+    rc = pthread_join(flippedMatching, &status2);
+    if (rc) {
+        cout << "Error:unable to join," << rc << endl;
         exit(-1);
     }
     

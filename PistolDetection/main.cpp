@@ -74,7 +74,7 @@ struct subdividedResults{
 #define MAX_WIDTH 700
 
 
-int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
+int runMatching(Mat edges, Mat tpl, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
     
     int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
     return best;
@@ -179,7 +179,6 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     
     // Create flipped template
     Mat tpl_flip, edges, cimgFinal;
-    cvtColor(img, cimgFinal, CV_GRAY2BGR);
     flip(tpl, tpl_flip, 1);
     
     // Resize image
@@ -193,6 +192,7 @@ chamferResult basicChamfer(Mat img, Mat tpl){
         size.width = (1 / ratio) * size.height;
     }
     resize(img, img, size);
+    cvtColor(img, cimgFinal, CV_GRAY2BGR);
     
     Canny(img, edges, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
@@ -204,14 +204,20 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     std::vector<float> flippedCosts;
     std::vector<Point> bestMatch;
     int originalBest, flippedBest;
-    void *status1, *status2;
+    //void *status1, *status2;
     float bestCost;
     
-    pthread_t originalMatching, flippedMatching;
-    threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
-    threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
+    //pthread_t originalMatching, flippedMatching;
+    //originalMatching = (pthread_t *)malloc(sizeof(pthread_t));
+    //flippedMatching = (pthread_t *)malloc(sizeof(pthread_t));
     
-    int rc = pthread_join(originalMatching, &status1);
+    originalBest = runMatching(edges, tpl, originalResults, originalCosts);
+    flippedBest = runMatching(edges, tpl_flip, flippedResults, flippedCosts);
+    
+    //threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
+    //threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
+    
+    /*int rc = pthread_join(originalMatching, &status1);
     if (rc) {
         cout << "Error:unable to join," << rc << endl;
         exit(-1);
@@ -221,7 +227,7 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     if (rc) {
         cout << "Error:unable to join," << rc << endl;
         exit(-1);
-    }
+    }*/
     
     if(originalBest==-1 && flippedBest==-1){
         result.found=false;
@@ -524,7 +530,7 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    for(int i = 1; i <= 120; i++){
+    for(int i = 61; i <= 120; i++){
         if(i == 97) break; //Ignore this folder of images - they are too small and too many
         int imgNum = 1;
         while(true){
@@ -533,8 +539,12 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
             string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            cout << fileLocation << endl;
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
+            imshow("Test", img);
+            waitKey();
+            destroyAllWindows();
             cvtColor(img, cimg, CV_GRAY2BGR);
             if(!img.data) break;
             bool imgTruth = truth[i][imgNum];
@@ -680,73 +690,30 @@ int main( int argc, char** argv ) {
     
     Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     
-    img = imread(argc == 3 ? argv[1] : "./X061_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
     cvtColor(img, cimg, CV_GRAY2BGR);
     cvtColor(img, cimgFinal, CV_GRAY2BGR);
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     flip(tpl, tpl_flip, 1);
     
-    basicChamfer(img, tpl);
+    //basicChamfer(img, tpl);
+    populateTruth();
+    basicChamferTest(tpl);
     return 0;
     
     
-    //Canny(img, edges, 70, 300, 3);
-    //Canny(tpl, tpl, 150, 500, 3);
-    //Canny(tpl_flip, tpl_flip, 150, 500, 3);
+    Canny(img, edges, 70, 300, 3);
+    Canny(tpl, tpl, 150, 500, 3);
+    Canny(tpl_flip, tpl_flip, 150, 500, 3);
     //Vector<Mat>images = splitIntoImages(tpl);
 
 
     //populateTruth();
     //basicChamferTest(tpl);
-    basicChamfer(img, tpl);
+    //basicChamfer(img, tpl);
     //votingChamferTest(tpl);
     //mlChamferTest(tpl);
-    return 0;
- 
-    std::vector<std::vector<Point>> originalResults;
-    std::vector<float> originalCosts;
-    std::vector<std::vector<Point>> flippedResults;
-    std::vector<float> flippedCosts;
-    std::vector<Point> bestMatch;
-    float bestCost;
-    int originalBest,flippedBest;
-    void *status1;
-    void *status2;
-    
-    pthread_t originalMatching, flippedMatching;
-    threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
-    threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
-    
-    int rc = pthread_join(originalMatching, &status1);
-    if (rc) {
-        cout << "Error:unable to join," << rc << endl;
-        exit(-1);
-    }
-    
-    rc = pthread_join(flippedMatching, &status2);
-    if (rc) {
-        cout << "Error:unable to join," << rc << endl;
-        exit(-1);
-    }
-    
-    if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
-        bestMatch = originalResults[originalBest];
-        bestCost = originalCosts[originalBest];
-    } else {
-        bestMatch = flippedResults[originalBest];
-        bestCost = flippedCosts[originalBest];
-    }
-    
-    cout << "Original cost: " << originalCosts[originalBest] << endl;
-    cout << "Flipped cost: " << flippedCosts[flippedBest] << endl;
-    
-    colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
-    imshow("Best", cimgFinal);
-    imwrite( "./Best.jpg", cimgFinal );
-    
-    waitKey();
-    destroyAllWindows();
-    pthread_exit(NULL);
+    //return 0;
 }
 
 

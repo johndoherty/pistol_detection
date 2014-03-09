@@ -70,6 +70,8 @@ struct subdividedResults{
 #define MAX_SCALE 1.2
 #define ORIENTATION_WEIGHT 0.9
 #define TRUNCATE 20
+#define MAX_HEIGHT 700
+#define MAX_WIDTH 700
 
 
 int runMatching(Mat tpl, Mat edges, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
@@ -188,9 +190,22 @@ image_truth readInImages(){
 chamferResult basicChamfer(Mat img, Mat tpl){
     chamferResult result;
     
+    // Create flipped template
     Mat tpl_flip, edges, cimgFinal;
     cvtColor(img, cimgFinal, CV_GRAY2BGR);
     flip(tpl, tpl_flip, 1);
+    
+    // Resize image
+    Size size = img.size();
+    float ratio = (float)size.height / size.width;
+    if (size.width >= size.height && size.width > MAX_WIDTH) {
+        size.width = MAX_WIDTH;
+        size.height = ratio * size.width;
+    } else if(size.height >= size.width && size.height > MAX_HEIGHT) {
+        size.height = MAX_HEIGHT;
+        size.width = (1 / ratio) * size.height;
+    }
+    resize(img, img, size);
     
     Canny(img, edges, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
@@ -204,10 +219,6 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     int originalBest, flippedBest;
     void *status1, *status2;
     float bestCost;
-    
-    //int originalBest = runMatching(tpl, edges, originalResults, originalCosts);
-    
-    //int flippedBest = runMatching(tpl_flip, edges, flippedResults, flippedCosts);
     
     pthread_t originalMatching, flippedMatching;
     threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
@@ -686,7 +697,7 @@ int main( int argc, char** argv ) {
     
     Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     
-    img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+    img = imread(argc == 3 ? argv[1] : "./X061_03.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     cvtColor(img, cimg, CV_GRAY2BGR);
     cvtColor(img, cimgFinal, CV_GRAY2BGR);
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
@@ -698,18 +709,19 @@ int main( int argc, char** argv ) {
     return 0;
     
     
-    Canny(img, edges, 70, 300, 3);
-    Canny(tpl, tpl, 150, 500, 3);
-    Canny(tpl_flip, tpl_flip, 150, 500, 3);
+    //Canny(img, edges, 70, 300, 3);
+    //Canny(tpl, tpl, 150, 500, 3);
+    //Canny(tpl_flip, tpl_flip, 150, 500, 3);
     //Vector<Mat>images = splitIntoImages(tpl);
 
-    /*
-    populateTruth();
-    basicChamferTest(tpl);
+
+    //populateTruth();
+    //basicChamferTest(tpl);
+    basicChamfer(img, tpl);
     //votingChamferTest(tpl);
     //mlChamferTest(tpl);
-    return 0;*/
-    
+    return 0;
+ 
     std::vector<std::vector<Point>> originalResults;
     std::vector<float> originalCosts;
     std::vector<std::vector<Point>> flippedResults;

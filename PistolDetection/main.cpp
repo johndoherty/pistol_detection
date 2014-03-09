@@ -137,14 +137,25 @@ void populateTruth(){
     //Auto-file read in
     ifstream input( "./truth.txt" );
     std::string line;
+    int guns = 0;
+    int non_guns = 0;
     while (std::getline(input, line)){
         Vector<int> currFolder;
         for(int num = 0; num < line.length(); num++){
             int currNum = atoi(&line[num]);
+            
+            if(currNum == 1){
+                guns++;
+            }else{
+                non_guns++;
+            }
+            
             currFolder.push_back(currNum);
         }
         truth.push_back(currFolder);
     }
+    cout << "Guns: " << guns << endl;
+    cout << "Non-guns: " << non_guns << endl;
 }
 
 /*Read in images and store the ground truth of whether a gun is associated with the image*/
@@ -261,7 +272,7 @@ chamferResult votingChamfer(Mat img, Mat tpl){
 	Vector<Mat> subPolygons = splitIntoImages(img);
 	int detected = 0;
 	for(int i = 0; i < numPolygons; i++){
-        chamferResult subresult = basicChamfer(subPolygons[i], tpl);
+        chamferResult subresult = basicChamfer(subPolygons[i], tpl.clone());
 		if(subresult.found==true) detected += 1;
 	}
 	if(detected > numPolygons/2){
@@ -310,7 +321,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 Vector<Mat> subPolygons = splitIntoImages(img, numPolygons, numPolygons);
                 for(int i = 0; i < numPolygons; i++){
-                    chamferResult subresult = basicChamfer(subPolygons[i], tpl);
+                    chamferResult subresult = basicChamfer(subPolygons[i], tpl.clone());
                     if(subresult.found){
                         found.push_back(1);//1 is found
                         found.push_back(subresult.cost);
@@ -535,8 +546,8 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             bool imgTruth = truth[i][imgNum];
             
             clock_t begin = clock();
-            
-            chamferResult test = basicChamfer(img, tpl);
+
+            chamferResult test = basicChamfer(img, tpl.clone());
             bool gunFound = test.found;
             
             clock_t end = clock();
@@ -673,9 +684,6 @@ int main( int argc, char** argv ) {
         return 0;
     }
     
-    readInImages();
-    return 0;
-    
     Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
     
     img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
@@ -684,7 +692,9 @@ int main( int argc, char** argv ) {
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     flip(tpl, tpl_flip, 1);
     
-    basicChamfer(img, tpl);
+    populateTruth();
+    basicChamferTest(tpl);
+    //basicChamfer(img, tpl);
     return 0;
     
     

@@ -192,7 +192,7 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     chamferResult result;
     
     // Create flipped template
-    Mat tpl_flip, edges, cimgFinal;
+    Mat tpl_flip, edges, cimgFinal, resized;
     flip(tpl, tpl_flip, 1);
     
     // Resize image
@@ -205,10 +205,10 @@ chamferResult basicChamfer(Mat img, Mat tpl){
         size.height = MAX_HEIGHT;
         size.width = (1 / ratio) * size.height;
     }
-    resize(img, img, size);
-    cvtColor(img, cimgFinal, CV_GRAY2BGR);
+    resize(img, resized, size);
+    cvtColor(resized, cimgFinal, CV_GRAY2BGR);
     
-    Canny(img, edges, 70, 300, 3);
+    Canny(resized, edges, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
     Canny(tpl_flip, tpl_flip, 150, 500, 3);
     
@@ -222,12 +222,11 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     float bestCost;
     
     pthread_t originalMatching, flippedMatching;
-    originalBest = runMatching(edges, tpl, originalResults, originalCosts);
-    flippedBest = runMatching(edges, tpl_flip, flippedResults, flippedCosts);
+    //originalBest = runMatching(edges, tpl, originalResults, originalCosts);
+    //flippedBest = runMatching(edges, tpl_flip, flippedResults, flippedCosts);
     
-    //threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
-    //threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
-    /*
+    threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
+    threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
     int rc = pthread_join(originalMatching, &status1);
     if (rc) {
         cout << "Error:unable to join," << rc << endl;
@@ -238,7 +237,7 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     if (rc) {
         cout << "Error:unable to join," << rc << endl;
         exit(-1);
-    }*/
+    }
     
     if(originalBest==-1 && flippedBest==-1){
         result.found=false;
@@ -321,7 +320,6 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 string folder = to_string(i);
                 string pic = to_string(imgNum);
                 if(i < 100) folder = "0" + folder;
-                if(imgNum < 100) pic = "0" + pic;
                 if(i < 10) folder = "0" + folder;
                 if(imgNum < 10) pic = "0" + pic;
                 string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
@@ -548,17 +546,17 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     
     for(int i = 1; i <= 120; i++){
         if(i == 97) continue; //Ignore this folder of images - they are too small and too many
-        if(i == 2) break;
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
             string pic = to_string(imgNum);
             if(i < 100) folder = "0" + folder;
-            if(imgNum < 100) pic = "0" + pic;
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
             string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
+            cout << fileLocation << endl;
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+            img.ptr();
             Mat cimg;
             
             cvtColor(img, cimg, CV_GRAY2BGR);

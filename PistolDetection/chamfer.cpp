@@ -1181,8 +1181,9 @@ namespace cv
         
         
         float sum_distance = 0;
+        float start = y * dist_img.cols + x;
         for (size_t i=0; i<addr.size();++i) {
-            if(addr[i] < (dist_img.cols*dist_img.rows) - (offset.y*dist_img.cols + offset.x)){
+            if(addr[i] > -1 * start && addr[i] < (dist_img.cols*dist_img.rows) - start){
                 sum_distance += *(ptr+addr[i]);
             }
         }
@@ -1197,7 +1198,7 @@ namespace cv
             
             for (size_t i=0;i<addr.size();++i) {
                 
-                if(addr[i] < (orientation_img.cols*orientation_img.rows) - (offset.y*orientation_img.cols + offset.x)){
+                if(addr[i] > -1 * start && addr[i] < (orientation_img.cols*orientation_img.rows) - start){
                     if (tpl->orientations[i]>=-CV_PI && (*(optr+addr[i]))>=-CV_PI) {
                         sum_orientation += orientation_diff(tpl->orientations[i], (*(optr+addr[i])));
                         cnt_orientation++;

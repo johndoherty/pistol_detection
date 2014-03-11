@@ -142,16 +142,17 @@ void populateTruth(){
     int guns = 0;
     int non_guns = 0;
     while (std::getline(input, line)){
+
         Vector<int> currFolder;
         for(int num = 0; num < line.length(); num++){
-            int currNum = atoi(&line[num]);
+            char thisNum =line[num];
+            int currNum = atoi(&thisNum);
             
             if(currNum == 1){
                 guns++;
             }else{
                 non_guns++;
             }
-            
             currFolder.push_back(currNum);
         }
         truth.push_back(currFolder);
@@ -510,20 +511,23 @@ bool MLChamferByFeatures(std::vector<double> features, funct decisionFunction){
 
 /*Report the results of a test*/
 void reportResults(int falsePositives, int falseNegatives, int correctIdentification, int correctDiscard){
+    ofstream results;
+    results.open (folder + "-Results.txt");
+    
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
-    cout << "False Positives: " << falsePositives << endl;
-    cout << "False Negatives: " << falseNegatives << endl;
-    cout << "Correct Identifications: " << correctIdentification << endl;
-    cout << "Correct Discards: " << correctDiscard << endl;
+    results << "False Positives: " << falsePositives << endl;
+    results << "False Negatives: " << falseNegatives << endl;
+    results << "Correct Identifications: " << correctIdentification << endl;
+    results << "Correct Discards: " << correctDiscard << endl;
     if(correctIdentification > 0){
         double precision = correctIdentification/(correctIdentification + falsePositives);
         double recall = correctIdentification/(correctIdentification + falseNegatives);
         double F1 = 2*precision*recall/(precision+recall);
-        cout << "Precision: " << precision << endl;
-        cout << "Recall: " << recall << endl;
-        cout << "F1 Score: " << F1 << endl;
+        results << "Precision: " << precision << endl;
+        results << "Recall: " << recall << endl;
+        results << "F1 Score: " << F1 << endl;
     }
-    cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
+    results << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }
 
 /*Test the performance of basic chamfer against all images*/
@@ -541,6 +545,7 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     
     for(int i = 1; i <= 120; i++){
         if(i == 97) continue; //Ignore this folder of images - they are too small and too many
+        if(i == 2) break;
         int imgNum = 1;
         while(true){
             string folder = to_string(i);

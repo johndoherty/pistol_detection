@@ -23,7 +23,7 @@ using namespace cv;
 using namespace dlib;
 
 Vector<Vector<int>> truth;
-const int numPolygons = 10;
+const int numPolygons = 2;
 const int features = numPolygons*2;
 
 static int numFound = 0;
@@ -139,28 +139,42 @@ void populateTruth(){
     //Auto-file read in
     ifstream input( "./truth.txt" );
     std::string line;
+    int guns = 0;
+    int non_guns = 0;
     while (std::getline(input, line)){
+
         Vector<int> currFolder;
         for(int num = 0; num < line.length(); num++){
-            int currNum = atoi(&line[num]);
+            char thisNum =line[num];
+            int currNum = atoi(&thisNum);
+            
+            if(currNum == 1){
+                guns++;
+            }else{
+                non_guns++;
+            }
             currFolder.push_back(currNum);
         }
         truth.push_back(currFolder);
     }
+    cout << "Guns: " << guns << endl;
+    cout << "Non-guns: " << non_guns << endl;
 }
 
 /*Read in images and store the ground truth of whether a gun is associated with the image*/
 image_truth readInImages(){
     image_truth images;
     for(int i = 1; i <= 120; i++){
-        if(i == 97) break; //Ignore this folder of images
+        if(i == 97) continue; //Ignore this folder of images
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
             string pic = to_string(imgNum);
+            if(i < 100) folder = "0" + folder;
+            if(imgNum < 100) pic = "0" + pic;
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
-            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+            string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
             cvtColor(img, cimg, CV_GRAY2BGR);
@@ -301,14 +315,16 @@ subdividedResults getAllSubImageResults(Mat tpl){
         costs.open ("./votingCosts-" + std::to_string(numPolygons) + ".txt");
         
         for(int i = 1; i <= 120; i++){
-            if(i == 97) break; //Ignore this folder of images - they are too small and too many
+            if(i == 97) continue; //Ignore this folder of images - they are too small and too many
             int imgNum = 1;
             while(true){
                 string folder = to_string(i);
                 string pic = to_string(imgNum);
+                if(i < 100) folder = "0" + folder;
+                if(imgNum < 100) pic = "0" + pic;
                 if(i < 10) folder = "0" + folder;
                 if(imgNum < 10) pic = "0" + pic;
-                string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
+                string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
                 Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
                 Mat cimg;
                 cvtColor(img, cimg, CV_GRAY2BGR);
@@ -498,20 +514,23 @@ bool MLChamferByFeatures(std::vector<double> features, funct decisionFunction){
 
 /*Report the results of a test*/
 void reportResults(int falsePositives, int falseNegatives, int correctIdentification, int correctDiscard){
+    ofstream results;
+    results.open (folder + "-Results.txt");
+    
     int sum = falsePositives + falseNegatives + correctDiscard + correctIdentification;
-    cout << "False Positives: " << falsePositives << endl;
-    cout << "False Negatives: " << falseNegatives << endl;
-    cout << "Correct Identifications: " << correctIdentification << endl;
-    cout << "Correct Discards: " << correctDiscard << endl;
+    results << "False Positives: " << falsePositives << endl;
+    results << "False Negatives: " << falseNegatives << endl;
+    results << "Correct Identifications: " << correctIdentification << endl;
+    results << "Correct Discards: " << correctDiscard << endl;
     if(correctIdentification > 0){
         double precision = correctIdentification/(correctIdentification + falsePositives);
         double recall = correctIdentification/(correctIdentification + falseNegatives);
         double F1 = 2*precision*recall/(precision+recall);
-        cout << "Precision: " << precision << endl;
-        cout << "Recall: " << recall << endl;
-        cout << "F1 Score: " << F1 << endl;
+        results << "Precision: " << precision << endl;
+        results << "Recall: " << recall << endl;
+        results << "F1 Score: " << F1 << endl;
     }
-    cout << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
+    results << "Success rate: " << (double)(correctDiscard + correctIdentification)/sum*100 << endl;
 }
 
 /*Test the performance of basic chamfer against all images*/
@@ -527,16 +546,18 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    for(int i = 3; i <= 120; i++){
-        if(i == 97) break; //Ignore this folder of images - they are too small and too many
+    for(int i = 1; i <= 120; i++){
+        if(i == 97) continue; //Ignore this folder of images - they are too small and too many
+        if(i == 2) break;
         int imgNum = 1;
         while(true){
             string folder = to_string(i);
             string pic = to_string(imgNum);
+            if(i < 100) folder = "0" + folder;
+            if(imgNum < 100) pic = "0" + pic;
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
-            string fileLocation = "../../images/X0" + folder + "/X0" + folder + "_" + pic + ".png";
-            cout << fileLocation << endl;
+            string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
             
@@ -545,9 +566,8 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             bool imgTruth = truth[i][imgNum];
             
             clock_t begin = clock();
-            
+
             chamferResult test = basicChamfer(img, tpl.clone());
-            
             bool gunFound = test.found;
             
             clock_t end = clock();
@@ -680,9 +700,10 @@ void mlChamferTest(Mat tpl){
 int main( int argc, char** argv ) {
     Mat tpl;
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-
+    
     populateTruth();
     basicChamferTest(tpl);
+    //basicChamfer(img, tpl);
     return 0;
 
 

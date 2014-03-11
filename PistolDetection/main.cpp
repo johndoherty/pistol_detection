@@ -171,7 +171,6 @@ image_truth readInImages(){
             string folder = to_string(i);
             string pic = to_string(imgNum);
             if(i < 100) folder = "0" + folder;
-            if(imgNum < 100) pic = "0" + pic;
             if(i < 10) folder = "0" + folder;
             if(imgNum < 10) pic = "0" + pic;
             string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
@@ -547,7 +546,7 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     for(int i = 1; i <= 120; i++){
         if(i == 97) continue; //Ignore this folder of images - they are too small and too many
         int imgNum = 1;
-        while(true){
+        while(true){//Go through folder
             string folder = to_string(i);
             string pic = to_string(imgNum);
             if(i < 100) folder = "0" + folder;
@@ -562,7 +561,6 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             cvtColor(img, cimg, CV_GRAY2BGR);
             if(!img.data) break;
             bool imgTruth = truth[i][imgNum];
-            
             clock_t begin = clock();
 
             chamferResult test = basicChamfer(img, tpl.clone());

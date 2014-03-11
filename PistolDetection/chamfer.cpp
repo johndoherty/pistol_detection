@@ -577,7 +577,7 @@ namespace cv
                     rotation_cnt_ ++;
                     rotation_ += rotation_step_;
                     
-                    std::cout << (((float)rotation_cnt_/rotations_) + ((float)scale_cnt_/(rotations_ * scales_))) * 100 << "%" << std::endl;
+                    //std::cout << (((float)rotation_cnt_/rotations_) + ((float)scale_cnt_/(rotations_ * scales_))) * 100 << "%" << std::endl;
                     
                     if (rotation_cnt_ == rotations_) {
                         has_next_ = false;
@@ -949,6 +949,7 @@ namespace cv
         }
         
         ChamferMatcher::Matching::findContourOrientations(tpl->coords, tpl->orientations);
+        
         scaled_rotated_templates.push_back(tpl);
         
         //tpl->show();

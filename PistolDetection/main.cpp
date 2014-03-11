@@ -70,8 +70,8 @@ struct subdividedResults{
 #define MAX_SCALE 1.2
 #define ORIENTATION_WEIGHT 0.9
 #define TRUNCATE 20
-#define MAX_HEIGHT 700
-#define MAX_WIDTH 700
+#define MAX_HEIGHT 400
+#define MAX_WIDTH 400
 
 
 int runMatching(Mat edges, Mat tpl, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
@@ -204,20 +204,17 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     std::vector<float> flippedCosts;
     std::vector<Point> bestMatch;
     int originalBest, flippedBest;
-    //void *status1, *status2;
+    void *status1, *status2;
     float bestCost;
     
-    //pthread_t originalMatching, flippedMatching;
-    //originalMatching = (pthread_t *)malloc(sizeof(pthread_t));
-    //flippedMatching = (pthread_t *)malloc(sizeof(pthread_t));
-    
+    pthread_t originalMatching, flippedMatching;
     originalBest = runMatching(edges, tpl, originalResults, originalCosts);
     flippedBest = runMatching(edges, tpl_flip, flippedResults, flippedCosts);
     
     //threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
     //threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
-    
-    /*int rc = pthread_join(originalMatching, &status1);
+    /*
+    int rc = pthread_join(originalMatching, &status1);
     if (rc) {
         cout << "Error:unable to join," << rc << endl;
         exit(-1);
@@ -276,7 +273,7 @@ chamferResult votingChamfer(Mat img, Mat tpl){
 	Vector<Mat> subPolygons = splitIntoImages(img);
 	int detected = 0;
 	for(int i = 0; i < numPolygons; i++){
-        chamferResult subresult = basicChamfer(subPolygons[i], tpl);
+        chamferResult subresult = basicChamfer(subPolygons[i], tpl.clone());
 		if(subresult.found==true) detected += 1;
 	}
 	if(detected > numPolygons/2){
@@ -323,7 +320,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 Vector<Mat> subPolygons = splitIntoImages(img, numPolygons, numPolygons);
                 for(int i = 0; i < numPolygons; i++){
-                    chamferResult subresult = basicChamfer(subPolygons[i], tpl);
+                    chamferResult subresult = basicChamfer(subPolygons[i], tpl.clone());
                     if(subresult.found){
                         found.push_back(1);//1 is found
                         found.push_back(subresult.cost);
@@ -530,7 +527,7 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    for(int i = 61; i <= 120; i++){
+    for(int i = 3; i <= 120; i++){
         if(i == 97) break; //Ignore this folder of images - they are too small and too many
         int imgNum = 1;
         while(true){
@@ -542,16 +539,15 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             cout << fileLocation << endl;
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
             Mat cimg;
-            imshow("Test", img);
-            waitKey();
-            destroyAllWindows();
+            
             cvtColor(img, cimg, CV_GRAY2BGR);
             if(!img.data) break;
             bool imgTruth = truth[i][imgNum];
             
             clock_t begin = clock();
             
-            chamferResult test = basicChamfer(img, tpl);
+            chamferResult test = basicChamfer(img, tpl.clone());
+            
             bool gunFound = test.found;
             
             clock_t end = clock();
@@ -682,30 +678,12 @@ void mlChamferTest(Mat tpl){
 }
 
 int main( int argc, char** argv ) {
-    
-    if( argc != 1 && argc != 3 ) {
-        //help();
-        return 0;
-    }
-    
-    Mat img, tpl, tpl_flip, edges, cimg, cimgFinal;
-    
-    img = imread(argc == 3 ? argv[1] : "./X067_02.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
-    cvtColor(img, cimg, CV_GRAY2BGR);
-    cvtColor(img, cimgFinal, CV_GRAY2BGR);
+    Mat tpl;
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-    flip(tpl, tpl_flip, 1);
-    
-    //basicChamfer(img, tpl);
+
     populateTruth();
     basicChamferTest(tpl);
     return 0;
-    
-    
-    Canny(img, edges, 70, 300, 3);
-    Canny(tpl, tpl, 150, 500, 3);
-    Canny(tpl_flip, tpl_flip, 150, 500, 3);
-    //Vector<Mat>images = splitIntoImages(tpl);
 
 
     //populateTruth();

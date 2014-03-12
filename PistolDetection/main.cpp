@@ -23,12 +23,12 @@ using namespace cv;
 using namespace dlib;
 
 Vector<Vector<int>> truth;
-const int numPolygons = 2;
+const int numPolygons = 4;
 const int features = numPolygons*2;
 
 static int numFound = 0;
-string folder = "./basicFinds/Found";
-//string folder = "./votingFinds/" + std::to_string(numPolygons) + "/Found";
+//string folder = "./basicFinds/Found";
+string folder = "./votingFinds/" + std::to_string(numPolygons) + "/Found";
 //string folder = "./mLFinds/Found";
 
 
@@ -282,10 +282,10 @@ Vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
 /*Return whether or not a gun is identified based on identification of a majority of subimages*/
 chamferResult votingChamfer(Mat img, Mat tpl){
     chamferResult result;
-	Vector<Mat> subPolygons = splitIntoImages(img);
+	Vector<Mat> subPolygons = splitIntoImages(tpl);
 	int detected = 0;
 	for(int i = 0; i < numPolygons; i++){
-        chamferResult subresult = basicChamfer(subPolygons[i], tpl.clone());
+        chamferResult subresult = basicChamfer(img, subPolygons[i].clone());
 		if(subresult.found==true) detected += 1;
 	}
 	if(detected > numPolygons/2){
@@ -298,6 +298,8 @@ chamferResult votingChamfer(Mat img, Mat tpl){
 
 subdividedResults getAllSubImageResults(Mat tpl){
     subdividedResults subResults;
+    
+    Vector<Mat> subPolygons = splitIntoImages(tpl, numPolygons, numPolygons);
     
     bool samplesTested = false;
     if(!samplesTested){
@@ -322,6 +324,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 if(i < 10) folder = "0" + folder;
                 if(imgNum < 10) pic = "0" + pic;
                 string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
+                cout << fileLocation << endl;
                 Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
                 Mat cimg;
                 cvtColor(img, cimg, CV_GRAY2BGR);
@@ -331,9 +334,8 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 clock_t begin = clock();
                 
-                Vector<Mat> subPolygons = splitIntoImages(img, numPolygons, numPolygons);
                 for(int i = 0; i < numPolygons; i++){
-                    chamferResult subresult = basicChamfer(subPolygons[i], tpl.clone());
+                    chamferResult subresult = basicChamfer(img, subPolygons[i].clone());
                     if(subresult.found){
                         found.push_back(1);//1 is found
                         found.push_back(subresult.cost);
@@ -462,13 +464,13 @@ funct setUpMLChamfer(Mat tpl, std::vector<std::vector<double> > imageFeatures, s
 
 /*Use trained system to determine whether or not a gun is present based on subimage results*/
 bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
-	Vector<Mat> subPolygons = splitIntoImages(img, numPolygons, numPolygons);
+	Vector<Mat> subPolygons = splitIntoImages(tpl, numPolygons, numPolygons);
     
 
     //Find results for sub-images
     subImageResults found;
 	for(int i = 0; i < numPolygons; i++){
-        chamferResult subresult = basicChamfer(subPolygons[i], tpl);
+        chamferResult subresult = basicChamfer(img, subPolygons[i].clone());
         if(subresult.found){
             found(2*i) = 1;//1 is found
             found(2*i+1) = (subresult.cost);
@@ -698,8 +700,8 @@ int main( int argc, char** argv ) {
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     
     populateTruth();
-    basicChamferTest(tpl);
-    //basicChamfer(img, tpl);
+    //basicChamferTest(tpl);
+    votingChamferTest(tpl);
     return 0;
 
 

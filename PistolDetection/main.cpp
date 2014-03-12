@@ -282,9 +282,9 @@ Vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
 /*Return whether or not a gun is identified based on identification of a majority of subimages*/
 chamferResult votingChamfer(Mat img, Mat tpl){
     chamferResult result;
-	Vector<Mat> subPolygons = splitIntoImages(tpl);
+	Vector<Mat> subPolygons = splitIntoImages(tpl, numPolygons, numPolygons);
 	int detected = 0;
-	for(int i = 0; i < numPolygons; i++){
+	for(int i = 0; i < subPolygons.size(); i++){
         chamferResult subresult = basicChamfer(img, subPolygons[i].clone());
 		if(subresult.found==true) detected += 1;
 	}
@@ -334,7 +334,7 @@ subdividedResults getAllSubImageResults(Mat tpl){
                 
                 clock_t begin = clock();
                 
-                for(int i = 0; i < numPolygons; i++){
+                for(int i = 0; i < subPolygons.size(); i++){
                     chamferResult subresult = basicChamfer(img, subPolygons[i].clone());
                     if(subresult.found){
                         found.push_back(1);//1 is found
@@ -469,7 +469,7 @@ bool MLChamfer(Mat img, Mat tpl, funct decisionFunction){
 
     //Find results for sub-images
     subImageResults found;
-	for(int i = 0; i < numPolygons; i++){
+	for(int i = 0; i < subPolygons.size(); i++){
         chamferResult subresult = basicChamfer(img, subPolygons[i].clone());
         if(subresult.found){
             found(2*i) = 1;//1 is found

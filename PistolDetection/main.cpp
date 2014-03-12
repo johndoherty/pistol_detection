@@ -520,8 +520,8 @@ void reportResults(int falsePositives, int falseNegatives, int correctIdentifica
     results << "Correct Identifications: " << correctIdentification << endl;
     results << "Correct Discards: " << correctDiscard << endl;
     if(correctIdentification > 0){
-        double precision = correctIdentification/(correctIdentification + falsePositives);
-        double recall = correctIdentification/(correctIdentification + falseNegatives);
+        double precision = (double) correctIdentification/(correctIdentification + falsePositives);
+        double recall = (double) correctIdentification/(correctIdentification + falseNegatives);
         double F1 = 2*precision*recall/(precision+recall);
         results << "Precision: " << precision << endl;
         results << "Recall: " << recall << endl;

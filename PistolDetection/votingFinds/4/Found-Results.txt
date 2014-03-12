@@ -1,0 +1,8 @@
+False Positives: 297
+False Negatives: 0
+Correct Identifications: 218
+Correct Discards: 0
+Precision: 0.423301
+Recall: 1
+F1 Score: 0.594816
+Success rate: 42.3301

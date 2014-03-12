@@ -23,7 +23,7 @@ using namespace cv;
 using namespace dlib;
 
 Vector<Vector<int>> truth;
-const int numPolygons = 4;
+const int numPolygons = 2;
 const int features = numPolygons*2;
 
 static int numFound = 0;
@@ -269,11 +269,14 @@ Vector<Mat> splitIntoImages(Mat img, int rows = 4, int cols = 4){
     Vector<Mat> subImages;
     int rowSize = ceil((float)img.rows / rows);
     int colSize = ceil((float)img.cols / cols);
-    
+    Mat subImage;
     for (int r = 0; r < rows; r ++) {
         for (int c = 0; c < cols; c ++) {
-            subImages.push_back(img(Range((r*rowSize), min(((r+1) * rowSize), img.rows)),
-                                    Range((c*colSize), min(((c+1) * colSize), img.cols))).clone());
+            subImage =img(Range((r*rowSize), min(((r+1) * rowSize), img.rows)),
+                          Range((c*colSize), min(((c+1) * colSize), img.cols))).clone();
+            if(sum(subImage)[0] != (subImage.rows * subImage.cols * 255)) {
+                subImages.push_back(subImage);
+            }
         }
     }
     return subImages;

@@ -28,7 +28,7 @@ const int features = numPolygons*2;
 
 static int numFound = 0;
 //string folder = "./basicFinds/Found";
-string folder = "./votingFinds/" + std::to_string(numPolygons) + "/Found";
+string folder = "./votingFinds2/" + std::to_string(numPolygons) + "/Found";
 //string folder = "./mLFinds/Found";
 
 
@@ -60,18 +60,19 @@ struct subdividedResults{
     std::vector<int> imageTruth;
 };
 
+#define MAX_HEIGHT 400
+#define MAX_WIDTH 400
 #define TEMPL_SCALE 1
 #define MAX_MATCHES 20
 #define MIN_MATCH_DIST 1.0
 #define PAD_X 3
 #define PAD_Y 3
-#define SCALES 4
-#define MIN_SCALE 0.6
+#define SCALES 6
+#define MIN_SCALE .6
 #define MAX_SCALE 1.2
-#define ORIENTATION_WEIGHT 0.9
+#define ORIENTATION_WEIGHT 0.0
 #define TRUNCATE 20
-#define MAX_HEIGHT 400
-#define MAX_WIDTH 400
+
 
 
 int runMatching(Mat edges, Mat tpl, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
@@ -186,8 +187,11 @@ image_truth readInImages(){
     return images;
 }
 
+
+
+
 /*Return whether or not a gun was identified using basic chamfer*/
-chamferResult basicChamfer(Mat img, Mat tpl){
+chamferResult basicSubPolygonChamfer(Mat img, std::vector<Mat> tpl, bool tryFlip = true){
     chamferResult result;
     
     // Create flipped template
@@ -210,6 +214,13 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     Canny(resized, edges, 70, 300, 3);
     Canny(tpl, tpl, 150, 500, 3);
     Canny(tpl_flip, tpl_flip, 150, 500, 3);
+    
+    Mat clrTpl;
+    
+    cvtColor(tpl, clrTpl, CV_GRAY2BGR);
+    
+    imwrite("./edge_img.jpg", edges);
+    imwrite("./template.jpg",clrTpl);
     
     std::vector<std::vector<Point>> originalResults;
     std::vector<float> originalCosts;
@@ -258,8 +269,105 @@ chamferResult basicChamfer(Mat img, Mat tpl){
     
     result.found = true;
     result.cost = bestCost;
+    
     colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
     imwrite( folder + std::to_string(numFound)+ ".jpg", cimgFinal );
+    //imshow("test", cimgFinal);
+    //waitKey();
+    //destroyAllWindows();
+    numFound++;
+    return result;
+}
+
+
+
+
+
+/*Return whether or not a gun was identified using basic chamfer*/
+chamferResult basicChamfer(Mat img, Mat tpl, bool tryFlip = true){
+    chamferResult result;
+    
+    // Create flipped template
+    Mat tpl_flip, edges, cimgFinal, resized;
+    flip(tpl, tpl_flip, 1);
+    
+    // Resize image
+    Size size = img.size();
+    float ratio = (float)size.height / size.width;
+    if (size.width >= size.height && size.width > MAX_WIDTH) {
+        size.width = MAX_WIDTH;
+        size.height = ratio * size.width;
+    } else if(size.height >= size.width && size.height > MAX_HEIGHT) {
+        size.height = MAX_HEIGHT;
+        size.width = (1 / ratio) * size.height;
+    }
+    resize(img, resized, size);
+    cvtColor(resized, cimgFinal, CV_GRAY2BGR);
+    
+    Canny(resized, edges, 70, 300, 3);
+    Canny(tpl, tpl, 150, 500, 3);
+    Canny(tpl_flip, tpl_flip, 150, 500, 3);
+    
+    Mat clrTpl;
+    
+    cvtColor(tpl, clrTpl, CV_GRAY2BGR);
+    
+    imwrite("./edge_img.jpg", edges);
+    imwrite("./template.jpg",clrTpl);
+    
+    std::vector<std::vector<Point>> originalResults;
+    std::vector<float> originalCosts;
+    std::vector<std::vector<Point>> flippedResults;
+    std::vector<float> flippedCosts;
+    std::vector<Point> bestMatch;
+    int originalBest, flippedBest;
+    void *status1, *status2;
+    float bestCost;
+    
+    pthread_t originalMatching, flippedMatching;
+    //originalBest = runMatching(edges, tpl, originalResults, originalCosts);
+    //flippedBest = runMatching(edges, tpl_flip, flippedResults, flippedCosts);
+    
+    threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
+    threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
+    int rc = pthread_join(originalMatching, &status1);
+    if (rc) {
+        cout << "Error:unable to join," << rc << endl;
+        exit(-1);
+    }
+    
+    rc = pthread_join(flippedMatching, &status2);
+    if (rc) {
+        cout << "Error:unable to join," << rc << endl;
+        exit(-1);
+    }
+    
+    if(originalBest==-1 && flippedBest==-1){
+        result.found=false;
+        result.cost = INFINITY;
+        return result;
+    }else if(originalBest==-1){
+        bestMatch = flippedResults[originalBest];
+        bestCost = flippedCosts[originalBest];
+    }else if(flippedBest==-1){
+        bestMatch = originalResults[originalBest];
+        bestCost = originalCosts[originalBest];
+    }else if (originalCosts[originalBest] <= flippedCosts[flippedBest]) {
+        bestMatch = originalResults[originalBest];
+        bestCost = originalCosts[originalBest];
+    } else {
+        bestMatch = flippedResults[originalBest];
+        bestCost = flippedCosts[originalBest];
+    }
+    
+    result.found = true;
+    result.cost = bestCost;
+    
+    colorPointsInImage(cimgFinal, bestMatch, Vec3b(0, 255, 0));
+    imwrite( folder + std::to_string(numFound)+ ".jpg", cimgFinal );
+    //imshow("test", cimgFinal);
+    //waitKey();
+    //destroyAllWindows();
     numFound++;
     return result;
 }
@@ -560,6 +668,9 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
             string fileLocation = "../../images/X" + folder + "/X" + folder + "_" + pic + ".png";
             cout << fileLocation << endl;
             Mat img = imread(fileLocation, CV_LOAD_IMAGE_GRAYSCALE);
+            /*imshow("test", img);
+            waitKey();
+            destroyAllWindows();*/
             img.ptr();
             Mat cimg;
             
@@ -699,8 +810,12 @@ void mlChamferTest(Mat tpl){
 }
 
 int main( int argc, char** argv ) {
-    Mat tpl;
+    Mat tpl, img;
     tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    img = imread("X069_05.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    
+    //basicChamfer(img, tpl);
+    
     
     populateTruth();
     //basicChamferTest(tpl);

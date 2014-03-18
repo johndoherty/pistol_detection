@@ -254,7 +254,7 @@ namespace cv
             
             std::vector<Template*> templates;
         public:
-            Matching(bool use_orientation = true, float _truncate = 10) : truncate_(_truncate), use_orientation_(use_orientation)
+            Matching(bool use_orientation = false, float _truncate = 10) : truncate_(_truncate), use_orientation_(use_orientation)
             {
             }
             
@@ -948,7 +948,7 @@ namespace cv
             tpl->coords[i].second = int(tpl->coords[i].second*scale_factor+0.5);
         }
         
-        ChamferMatcher::Matching::findContourOrientations(tpl->coords, tpl->orientations);
+        //ChamferMatcher::Matching::findContourOrientations(tpl->coords, tpl->orientations);
         
         scaled_rotated_templates.push_back(tpl);
         
@@ -1457,9 +1457,10 @@ namespace cv
         
         ChamferMatcher matcher_(maxMatches, (float)minMatchDistance, padX, padY, scales,
                                 (float)minScale, (float)maxScale,
-                                (float)orientationWeight, (float)truncate, 20);
+                                (float)orientationWeight, (float)truncate, 40);
         
         ChamferMatcher::Template template_(templ, (float)templScale, (float)0);
+        //template_.show();
         ChamferMatcher::Matches match_instances = matcher_.matching(template_, img);
         
         size_t i, nmatches = match_instances.size();

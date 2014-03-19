@@ -79,13 +79,7 @@ struct subdividedResults{
 #define TRUNCATE 20
 
 
-
-int runMatching(Mat edges, Mat tpl, std::vector<std::vector<Point> > &results, std::vector<float> &costs) {
-    
-    int best = chamerMatching(edges, tpl, results, costs, TEMPL_SCALE, MAX_MATCHES, MIN_MATCH_DIST, PAD_X, PAD_Y, SCALES, MIN_SCALE, MAX_SCALE, ORIENTATION_WEIGHT, TRUNCATE);
-    return best;
-}
-
+/*Runs chamfer matching with specified parameters. Designed to be run on separate thread*/
 void* runMatching(void *threadData) {
     
     thread_data *input = (thread_data *) threadData;
@@ -93,6 +87,7 @@ void* runMatching(void *threadData) {
     pthread_exit(NULL);
 }
 
+/*Spawn a new thread to run matching using the given edge image and template*/
 void threadedMatching(Mat* edges, Mat* tpl, std::vector<std::vector<Point> > *results, std::vector<float> *costs, int *best, pthread_t *thread) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -115,6 +110,7 @@ void threadedMatching(Mat* edges, Mat* tpl, std::vector<std::vector<Point> > *re
     }
 }
 
+/*Helper function to produce image output to judge detection*/
 void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
     size_t i, n = results.size();
     for( i = 0; i < n; i++ ) {
@@ -125,6 +121,7 @@ void colorPointsInImage(Mat img, std::vector<Point>&results, Vec3b color) {
     }
 }
 
+/*Displays results in new window. Must be called from main thread*/
 void displayResults(Mat img, int best, std::vector<std::vector<Point> >&results, bool showAllMatches) {
     
     if (showAllMatches) {
@@ -192,8 +189,6 @@ image_truth readInImages(){
     return images;
 }
 
-
-
 /*Return whether or not a gun was identified using basic chamfer*/
 chamferResult basicChamfer(Mat img, Mat tpl, bool tryFlip = true){
     chamferResult result;
@@ -219,13 +214,6 @@ chamferResult basicChamfer(Mat img, Mat tpl, bool tryFlip = true){
     Canny(tpl, tpl, 150, 500, 3);
     Canny(tpl_flip, tpl_flip, 150, 500, 3);
     
-    Mat clrTpl;
-    
-    cvtColor(tpl, clrTpl, CV_GRAY2BGR);
-    
-    imwrite("./edge_img.jpg", edges);
-    imwrite("./template.jpg",clrTpl);
-    
     std::vector<std::vector<Point>> originalResults;
     std::vector<float> originalCosts;
     std::vector<std::vector<Point>> flippedResults;
@@ -236,8 +224,6 @@ chamferResult basicChamfer(Mat img, Mat tpl, bool tryFlip = true){
     float bestCost;
     
     pthread_t originalMatching, flippedMatching;
-    //originalBest = runMatching(edges, tpl, originalResults, originalCosts);
-    //flippedBest = runMatching(edges, tpl_flip, flippedResults, flippedCosts);
     
     threadedMatching(&edges, &tpl, &originalResults, &originalCosts, &originalBest, &originalMatching);
     threadedMatching(&edges, &tpl_flip, &flippedResults, &flippedCosts, &flippedBest, &flippedMatching);
@@ -436,7 +422,6 @@ std::vector<std::vector<double> > getAllFullImageCosts(){
     return costs;
 }
 
-
 /*Calculate the function to be used for ML using training samples*/
 funct setUpMLChamfer(Mat tpl, std::vector<std::vector<double> > imageFeatures, std::vector<int> imageTruths){
 
@@ -595,7 +580,7 @@ void basicChamferTest(Mat tpl){//Basic or votingChamfer
     int correctIdentification = 0;
     int correctDiscard = 0;
     
-    for(int i = 1; i <= 120; i++){
+    for(int i = 62; i <= 120; i++){
         if(i == 97) continue; //Ignore this folder of images - they are too small and too many
         int imgNum = 1;
         while(true){//Go through folder
@@ -764,12 +749,8 @@ void mlChamferTest(Mat tpl){
 }
 
 int main( int argc, char** argv ) {
-    Mat tpl, img;
-    tpl = imread(argc == 3 ? argv[1] : "./pistol_3.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-    img = imread("X069_05.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-    
-    //basicChamfer(img, tpl);
-    
+    Mat tpl;
+    tpl = imread("./pistol_tpl.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     
     populateTruth();
     basicChamferTest(tpl);

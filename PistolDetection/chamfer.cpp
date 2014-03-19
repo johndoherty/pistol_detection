@@ -906,7 +906,7 @@ namespace cv
         return addr;
     }
 
-    bool first = true;
+    /*Added function to apply scale and rotation to template*/
     ChamferMatcher::Template* ChamferMatcher::Template::tranform(float new_scale, float new_rotation) {
         if (fabs(scale-new_scale)<1e-6 && fabs(rotation - new_rotation)<1e-6) return this;
         
@@ -930,7 +930,6 @@ namespace cv
             tpl->coords[i].first = int(coords[i].first*cos_r + coords[i].second*sin_r);
             tpl->coords[i].second = int(coords[i].first*(-1*sin_r) + coords[i].second*cos_r);
         }
-        first = false;
         
         
         // Scale
@@ -948,18 +947,10 @@ namespace cv
             tpl->coords[i].second = int(tpl->coords[i].second*scale_factor+0.5);
         }
         
+        // Removed orientation matching
         //ChamferMatcher::Matching::findContourOrientations(tpl->coords, tpl->orientations);
         
         scaled_rotated_templates.push_back(tpl);
-        
-        //tpl->show();
-        /*
-        std::cout << "Scale: ";
-        std::cout << new_scale;
-        std::cout << ", ";
-        std::cout << "Rotation: ";
-        std::cout << new_rotation << std::endl;
-        */
         
         return tpl;
     }
